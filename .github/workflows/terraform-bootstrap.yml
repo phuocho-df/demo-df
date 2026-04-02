@@ -10,9 +10,9 @@
 #   1. Create an IAM user with AdministratorAccess in AWS Console
 #   2. Generate access keys for that user
 #   3. Add to GitHub Secrets:
-#        AWS_BOOTSTRAP_ACCESS_KEY_ID     → access key ID
-#        AWS_BOOTSTRAP_SECRET_ACCESS_KEY → secret access key
-#        GH_BOOTSTRAP_TOKEN             → GitHub PAT with repo scope (to set secrets/variables)
+#        AWS_ACCESS_KEY_ID     → access key ID
+#        AWS_SECRET_ACCESS_KEY → secret access key
+#        GH_BOOTSTRAP_TOKEN   → GitHub PAT with repo scope (to set secrets/variables)
 #   4. Add required Terraform input secrets/variables (see Terraform Apply step below)
 #   5. Run this workflow manually via Actions → Terraform Bootstrap → Run workflow
 #   6. Delete the IAM user and the three bootstrap secrets listed above
@@ -48,8 +48,8 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: us-east-1
-          aws-access-key-id: ${{ secrets.AWS_BOOTSTRAP_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_BOOTSTRAP_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       # Step 1: Create S3 bucket + DynamoDB table (bootstrap uses local state)
       - name: Terraform Init (bootstrap)
@@ -128,6 +128,6 @@ jobs:
           echo "GitHub Variables set: AWS_ACCOUNT_ID, TF_STATE_BUCKET, TF_STATE_LOCK_TABLE"
           echo ""
           echo "Next steps:"
-          echo "  1. Delete GitHub secrets: AWS_BOOTSTRAP_ACCESS_KEY_ID, AWS_BOOTSTRAP_SECRET_ACCESS_KEY, GH_BOOTSTRAP_TOKEN"
+          echo "  1. Delete GitHub secrets: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, GH_BOOTSTRAP_TOKEN"
           echo "  2. Delete the IAM user used for bootstrap"
           echo "  3. Future Terraform changes go through terraform-ci/cd workflows"
