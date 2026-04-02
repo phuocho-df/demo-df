@@ -1,0 +1,29 @@
+# Copy this file to terraform.tfvars and fill in your values.
+# NEVER commit terraform.tfvars to version control.
+
+app_name   = "django-template"
+aws_region = "us-east-1"
+
+# Domain for HTTPS (must point to ALB after apply)
+domain_name = "dfdemo.space"
+
+# ECR image tag to deploy
+image_tag = "latest"
+
+# Database
+db_name     = "project_name"
+db_username = "postgres"
+db_password = "change-me-strong-password"
+
+# Django secrets (generate with: openssl rand -hex 32)
+secret_key      = "change-me-django-secret-key"
+jwt_signing_key = "change-me-jwt-signing-key"
+
+# CORS allowed origins
+cors_allowed_origins = "https://dfdemo.space"
+
+# GitHub repository for OIDC deploy role trust (format: org/repo)
+github_repo = "my-org/my-repo"
+
+# Bastion host SSH public key (paste contents of ~/.ssh/id_rsa.pub or similar)
+bastion_public_key = "ssh-rsa AAAAB3NzaC1yc2E..."

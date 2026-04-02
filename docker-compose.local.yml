@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:latest
+    image: postgres:15-alpine
     hostname: postgres
     environment:
       POSTGRES_USER: postgres
@@ -10,6 +10,11 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   api:
     build:
@@ -19,7 +24,8 @@ services:
     ports:
       - "8000:80"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
       - ENV=dev
       - SECRET_KEY=example_secret_key

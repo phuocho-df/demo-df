@@ -277,3 +277,6 @@ tags
 
 # Ruff cache
 .ruff_cache
+
+# Terraform secrets
+terraform/*.tfvars
