@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - main
 
 # Required for OIDC token exchange with AWS
 permissions:
