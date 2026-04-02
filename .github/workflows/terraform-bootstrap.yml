@@ -1,9 +1,9 @@
 # -----------------------------------------------------------------------------
 # File:    terraform-bootstrap.yml
 # Purpose: One-time bootstrap — creates S3 state bucket, DynamoDB lock table,
-#          and OIDC IAM role so all future runs can use OIDC workflows.
-#          Automatically sets GitHub Secrets/Variables via gh CLI — no manual
-#          copy-paste, no sensitive values printed to logs.
+#          and OIDC IAM role so CI/CD workflows can authenticate via OIDC.
+#          Full infrastructure deployment is handled by terraform-cd.yml.
+#          Automatically sets GitHub Secrets/Variables via gh CLI.
 # Trigger: workflow_dispatch only (manual, never automatic)
 #
 # HOW TO USE (run once, then delete bootstrap credentials):
@@ -12,10 +12,13 @@
 #   3. Add to GitHub Secrets:
 #        AWS_ACCESS_KEY_ID     → access key ID
 #        AWS_SECRET_ACCESS_KEY → secret access key
-#        GH_BOOTSTRAP_TOKEN   → GitHub PAT with repo scope (to set secrets/variables)
-#   4. Add required Terraform input secrets/variables (see Terraform Apply step below)
+#        GH_BOOTSTRAP_TOKEN   → GitHub PAT with repo + secrets/variables write scope
+#        TF_VAR_GITHUB_TOKEN  → GitHub PAT used by Terraform github provider
+#   4. Add to GitHub Variables:
+#        TF_VAR_GITHUB_REPO   → e.g. phuocho-df/demo-df
 #   5. Run this workflow manually via Actions → Terraform Bootstrap → Run workflow
 #   6. Delete the IAM user and the three bootstrap secrets listed above
+#   7. Push a terraform change to trigger terraform-cd for full infra deployment
 # -----------------------------------------------------------------------------
 
 name: Terraform Bootstrap
@@ -25,7 +28,7 @@ on:
 
 jobs:
   bootstrap:
-    name: Bootstrap infrastructure
+    name: Bootstrap prerequisites
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -51,7 +54,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      # Step 1: Create S3 bucket + DynamoDB table (bootstrap uses local state)
+      # Step 1: Create S3 bucket + DynamoDB table for remote state (local state for bootstrap itself)
       - name: Terraform Init (bootstrap)
         working-directory: ./terraform/bootstrap
         run: terraform init
@@ -67,7 +70,7 @@ jobs:
           echo "TF_STATE_BUCKET=$(terraform output -raw tf_state_bucket)" >> $GITHUB_OUTPUT
           echo "TF_STATE_LOCK_TABLE=$(terraform output -raw tf_state_lock_table)" >> $GITHUB_OUTPUT
 
-      # Step 2: Apply main terraform — creates OIDC role + full infra
+      # Step 2: Init main terraform with the remote backend just created
       - name: Terraform Init (main)
         working-directory: ./terraform
         run: |
@@ -78,21 +81,27 @@ jobs:
             -backend-config="dynamodb_table=${{ steps.bootstrap.outputs.TF_STATE_LOCK_TABLE }}" \
             -backend-config="encrypt=true"
 
-      - name: Terraform Apply (main)
+      # Step 3: Create ONLY the OIDC role so CI/CD workflows can authenticate
+      # Full infrastructure deployment is handled by terraform-cd.yml
+      - name: Terraform Apply (OIDC role only)
         working-directory: ./terraform
-        run: terraform apply -auto-approve -input=false
+        run: |
+          terraform apply -auto-approve -input=false \
+            -target=module.github_oidc
         env:
-          TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
-          TF_VAR_secret_key: ${{ secrets.TF_VAR_SECRET_KEY }}
-          TF_VAR_jwt_signing_key: ${{ secrets.TF_VAR_JWT_SIGNING_KEY }}
           TF_VAR_github_token: ${{ secrets.TF_VAR_GITHUB_TOKEN }}
-          TF_VAR_domain_name: ${{ vars.TF_VAR_DOMAIN_NAME }}
-          TF_VAR_cors_allowed_origins: ${{ vars.TF_VAR_CORS_ALLOWED_ORIGINS }}
           TF_VAR_github_repo: ${{ vars.TF_VAR_GITHUB_REPO }}
-          TF_VAR_certificate_arn: ${{ vars.TF_VAR_CERTIFICATE_ARN }}
-          TF_VAR_bastion_public_key: ${{ secrets.TF_VAR_BASTION_PUBLIC_KEY }}
+          # Remaining required vars — placeholder values only for this targeted apply
+          # (these resources are NOT created in this step)
+          TF_VAR_db_password: placeholder
+          TF_VAR_secret_key: placeholder
+          TF_VAR_jwt_signing_key: placeholder
+          TF_VAR_domain_name: placeholder
+          TF_VAR_cors_allowed_origins: placeholder
+          TF_VAR_certificate_arn: placeholder
+          TF_VAR_bastion_public_key: placeholder
 
-      # Step 3: Auto-set GitHub Secrets/Variables via gh CLI — nothing printed to logs
+      # Step 4: Auto-set GitHub Secrets/Variables via gh CLI — nothing printed to logs
       - name: Configure GitHub repository secrets and variables
         working-directory: ./terraform
         env:
@@ -106,12 +115,10 @@ jobs:
           echo "::add-mask::$TERRAFORM_ROLE_ARN"
           echo "::add-mask::$AWS_ACCOUNT_ID"
 
-          # Set secret — TERRAFORM_ROLE_ARN is treated as a secret (contains account ID + role name)
           gh secret set TERRAFORM_ROLE_ARN \
             --repo "$GH_REPO" \
             --body "$TERRAFORM_ROLE_ARN"
 
-          # Set variables — non-sensitive config values
           gh variable set AWS_ACCOUNT_ID \
             --repo "$GH_REPO" \
             --body "$AWS_ACCOUNT_ID"
@@ -131,4 +138,4 @@ jobs:
           echo "Next steps:"
           echo "  1. Delete GitHub secrets: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, GH_BOOTSTRAP_TOKEN"
           echo "  2. Delete the IAM user used for bootstrap"
-          echo "  3. Future Terraform changes go through terraform-ci/cd workflows"
+          echo "  3. Push a terraform change to trigger terraform-cd for full infra deployment"
