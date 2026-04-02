@@ -22,8 +22,15 @@ jwt_signing_key = "change-me-jwt-signing-key"
 # CORS allowed origins
 cors_allowed_origins = "https://dfdemo.space"
 
+# ACM certificate ARN — create manually in AWS Console, then paste ARN here
+certificate_arn = "arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
 # GitHub repository for OIDC deploy role trust (format: org/repo)
 github_repo = "my-org/my-repo"
+
+# GitHub personal access token — needs repo scope to set Actions secrets
+# Generate at: https://github.com/settings/tokens
+github_token = "ghp_..."
 
 # Bastion host SSH public key (paste contents of ~/.ssh/id_rsa.pub or similar)
 bastion_public_key = "ssh-rsa AAAAB3NzaC1yc2E..."

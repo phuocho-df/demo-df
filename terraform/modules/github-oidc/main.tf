@@ -31,11 +31,14 @@ data "aws_iam_policy_document" "github_trust" {
       values   = ["sts.amazonaws.com"]
     }
 
-    # Scoped to master branch of the specific repo only
+    # Scoped to main and master branches of the specific repo
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:ref:refs/heads/master"]
+      values   = [
+        "repo:${var.github_repo}:ref:refs/heads/master",
+        "repo:${var.github_repo}:ref:refs/heads/main",
+      ]
     }
   }
 }

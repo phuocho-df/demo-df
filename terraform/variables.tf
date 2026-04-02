@@ -59,6 +59,17 @@ variable "cors_allowed_origins" {
 }
 
 # Bastion host
+variable "certificate_arn" {
+  description = "ACM certificate ARN for HTTPS — created manually in AWS Console"
+  type        = string
+}
+
+variable "github_token" {
+  description = "GitHub personal access token with repo scope — used to set Actions secrets via Terraform"
+  type        = string
+  sensitive   = true
+}
+
 variable "github_repo" {
   description = "GitHub repository in org/repo format — scopes OIDC trust to master branch (e.g. my-org/my-repo)"
   type        = string

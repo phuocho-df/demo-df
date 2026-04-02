@@ -3,6 +3,11 @@ variable "app_name" {
   type        = string
 }
 
+variable "certificate_arn" {
+  description = "ACM certificate ARN for the HTTPS listener"
+  type        = string
+}
+
 variable "vpc_id" {
   description = "VPC ID where the ALB will be deployed"
   type        = string
