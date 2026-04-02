@@ -87,6 +87,7 @@ jobs:
           TF_VAR_jwt_signing_key: ${{ secrets.TF_VAR_JWT_SIGNING_KEY }}
           TF_VAR_github_token: ${{ secrets.TF_VAR_GITHUB_TOKEN }}
           TF_VAR_domain_name: ${{ vars.TF_VAR_DOMAIN_NAME }}
+          TF_VAR_cors_allowed_origins: ${{ vars.TF_VAR_CORS_ALLOWED_ORIGINS }}
           TF_VAR_github_repo: ${{ vars.TF_VAR_GITHUB_REPO }}
           TF_VAR_certificate_arn: ${{ vars.TF_VAR_CERTIFICATE_ARN }}
           TF_VAR_bastion_public_key: ${{ secrets.TF_VAR_BASTION_PUBLIC_KEY }}

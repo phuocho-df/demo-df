@@ -5,7 +5,7 @@
 # Last updated: YYYY-MM-DD
 # -----------------------------------------------------------------------------
 
-name: Running CI
+name: Terraform CI
 
 on:
   pull_request:

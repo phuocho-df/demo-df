@@ -5,7 +5,7 @@
 # Last updated: YYYY-MM-DD
 # -----------------------------------------------------------------------------
 
-name: Terraform deploy
+name: Terraform Deploy
 
 on:
   push:
@@ -72,8 +72,28 @@ jobs:
       - name: Terraform Plan
         working-directory: ./terraform
         run: terraform plan -input=false
+        env:
+          TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
+          TF_VAR_secret_key: ${{ secrets.TF_VAR_SECRET_KEY }}
+          TF_VAR_jwt_signing_key: ${{ secrets.TF_VAR_JWT_SIGNING_KEY }}
+          TF_VAR_github_token: ${{ secrets.TF_VAR_GITHUB_TOKEN }}
+          TF_VAR_bastion_public_key: ${{ secrets.TF_VAR_BASTION_PUBLIC_KEY }}
+          TF_VAR_domain_name: ${{ vars.TF_VAR_DOMAIN_NAME }}
+          TF_VAR_cors_allowed_origins: ${{ vars.TF_VAR_CORS_ALLOWED_ORIGINS }}
+          TF_VAR_github_repo: ${{ vars.TF_VAR_GITHUB_REPO }}
+          TF_VAR_certificate_arn: ${{ vars.TF_VAR_CERTIFICATE_ARN }}
 
       # Uncomment to enable auto-deploy
       # - name: Terraform Apply
       #   working-directory: ./terraform
+      #   env:
+      #     TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
+      #     TF_VAR_secret_key: ${{ secrets.TF_VAR_SECRET_KEY }}
+      #     TF_VAR_jwt_signing_key: ${{ secrets.TF_VAR_JWT_SIGNING_KEY }}
+      #     TF_VAR_github_token: ${{ secrets.TF_VAR_GITHUB_TOKEN }}
+      #     TF_VAR_bastion_public_key: ${{ secrets.TF_VAR_BASTION_PUBLIC_KEY }}
+      #     TF_VAR_domain_name: ${{ vars.TF_VAR_DOMAIN_NAME }}
+      #     TF_VAR_cors_allowed_origins: ${{ vars.TF_VAR_CORS_ALLOWED_ORIGINS }}
+      #     TF_VAR_github_repo: ${{ vars.TF_VAR_GITHUB_REPO }}
+      #     TF_VAR_certificate_arn: ${{ vars.TF_VAR_CERTIFICATE_ARN }}
       #   run: terraform apply -auto-approve -input=false
