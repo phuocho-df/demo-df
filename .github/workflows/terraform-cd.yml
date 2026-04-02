@@ -1,0 +1,66 @@
+# -----------------------------------------------------------------------------
+# File:    terraform-cd.yml
+# Purpose: Terraform CD — init, plan, apply on push to master
+# Branch:  master
+# Last updated: YYYY-MM-DD
+# -----------------------------------------------------------------------------
+
+name: Terraform deploy
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'terraform/**'
+
+jobs:
+  deploy:
+    name: Running deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    if: github.ref == 'refs/heads/master'
+
+    steps:
+      - name: Read versions
+        id: versions
+        run: |
+          echo "TF_VERSION=$(cat terraform/.terraform-version)" >> $GITHUB_OUTPUT
+          echo "CHECKOUT_VERSION=$(jq -r '.actions_checkout' .github/versions.json)" >> $GITHUB_OUTPUT
+          echo "SETUP_TF_VERSION=$(jq -r '.setup_terraform' .github/versions.json)" >> $GITHUB_OUTPUT
+          echo "AWS_CREDS_VERSION=$(jq -r '.configure_aws_credentials' .github/versions.json)" >> $GITHUB_OUTPUT
+
+      - name: Checkout
+        uses: actions/checkout@${{ steps.versions.outputs.CHECKOUT_VERSION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@${{ steps.versions.outputs.SETUP_TF_VERSION }}
+        with:
+          terraform_version: ${{ steps.versions.outputs.TF_VERSION }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@${{ steps.versions.outputs.AWS_CREDS_VERSION }}
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ secrets.TERRAFORM_ROLE_ARN }}
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="key=terraform.tfstate" \
+            -backend-config="region=${{ vars.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ vars.TF_STATE_LOCK_TABLE }}" \
+            -backend-config="encrypt=true"
+
+      - name: Terraform Plan
+        working-directory: ./terraform
+        run: terraform plan -input=false
+
+      # Uncomment to enable auto-deploy
+      # - name: Terraform Apply
+      #   working-directory: ./terraform
+      #   run: terraform apply -auto-approve -input=false

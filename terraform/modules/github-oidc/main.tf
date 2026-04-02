@@ -115,3 +115,17 @@ resource "aws_iam_role_policy" "github_deploy" {
   role   = aws_iam_role.github_deploy.id
   policy = data.aws_iam_policy_document.github_deploy.json
 }
+
+# Terraform role — assumed by GitHub Actions terraform-ci/cd/destroy workflows
+# Needs broad permissions to create/modify/destroy all managed AWS resources
+resource "aws_iam_role" "github_terraform" {
+  name               = "${var.app_name}-github-terraform"
+  assume_role_policy = data.aws_iam_policy_document.github_trust.json
+
+  tags = { Name = "${var.app_name}-github-terraform" }
+}
+
+resource "aws_iam_role_policy_attachment" "github_terraform_admin" {
+  role       = aws_iam_role.github_terraform.name
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}

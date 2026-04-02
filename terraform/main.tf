@@ -145,3 +145,9 @@ resource "github_actions_secret" "ecs_container_name" {
   secret_name     = "ECS_CONTAINER_NAME"
   plaintext_value = var.app_name
 }
+
+resource "github_actions_secret" "terraform_role_arn" {
+  repository      = local.repo_name
+  secret_name     = "TERRAFORM_ROLE_ARN"
+  plaintext_value = module.github_oidc.terraform_role_arn
+}

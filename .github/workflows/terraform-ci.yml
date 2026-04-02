@@ -1,0 +1,130 @@
+# -----------------------------------------------------------------------------
+# File:    terraform-ci.yml
+# Purpose: Terraform CI — fmt, init, validate, plan with PR comments + tfsec
+# Branch:  master
+# Last updated: YYYY-MM-DD
+# -----------------------------------------------------------------------------
+
+name: Running CI
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'terraform/**'
+
+jobs:
+  terraform-ci:
+    name: Terraform CI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+
+    steps:
+      - name: Read versions
+        id: versions
+        run: |
+          echo "TF_VERSION=$(cat terraform/.terraform-version)" >> $GITHUB_OUTPUT
+          echo "CHECKOUT_VERSION=$(jq -r '.actions_checkout' .github/versions.json)" >> $GITHUB_OUTPUT
+          echo "SETUP_TF_VERSION=$(jq -r '.setup_terraform' .github/versions.json)" >> $GITHUB_OUTPUT
+          echo "AWS_CREDS_VERSION=$(jq -r '.configure_aws_credentials' .github/versions.json)" >> $GITHUB_OUTPUT
+          echo "PR_COMMENTER_VERSION=$(jq -r '.terraform_pr_commenter' .github/versions.json)" >> $GITHUB_OUTPUT
+
+      - name: Checkout
+        uses: actions/checkout@${{ steps.versions.outputs.CHECKOUT_VERSION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@${{ steps.versions.outputs.SETUP_TF_VERSION }}
+        with:
+          terraform_version: ${{ steps.versions.outputs.TF_VERSION }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@${{ steps.versions.outputs.AWS_CREDS_VERSION }}
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ secrets.TERRAFORM_ROLE_ARN }}
+
+      - name: Terraform Format
+        id: fmt
+        working-directory: ./terraform
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Post Format comment
+        uses: digitalfortress-dev/terraform-pr-commenter@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXPAND_SUMMARY_DETAILS: true
+        with:
+          commenter_type: fmt
+          commenter_input: ${{ format('{0}{1}', steps.fmt.outputs.stdout, steps.fmt.outputs.stderr) }}
+          commenter_exitcode: ${{ steps.fmt.outputs.exitcode }}
+
+      - name: Terraform Init
+        id: init
+        working-directory: ./terraform
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="key=terraform.tfstate" \
+            -backend-config="region=${{ vars.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ vars.TF_STATE_LOCK_TABLE }}" \
+            -backend-config="encrypt=true"
+
+      - name: Post Init comment
+        uses: digitalfortress-dev/terraform-pr-commenter@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXPAND_SUMMARY_DETAILS: true
+        with:
+          commenter_type: init
+          commenter_input: ${{ format('{0}{1}', steps.init.outputs.stdout, steps.init.outputs.stderr) }}
+          commenter_exitcode: ${{ steps.init.outputs.exitcode }}
+
+      - name: Terraform Validate
+        id: validate
+        working-directory: ./terraform
+        run: terraform validate
+
+      - name: Post Validate comment
+        uses: digitalfortress-dev/terraform-pr-commenter@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXPAND_SUMMARY_DETAILS: true
+        with:
+          commenter_type: validate
+          commenter_input: ${{ format('{0}{1}', steps.validate.outputs.stdout, steps.validate.outputs.stderr) }}
+          commenter_exitcode: ${{ steps.validate.outputs.exitcode }}
+
+      - name: Terraform Plan
+        id: plan
+        working-directory: ./terraform
+        run: terraform plan
+        continue-on-error: true
+
+      - name: Post Plan comment
+        uses: digitalfortress-dev/terraform-pr-commenter@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXPAND_SUMMARY_DETAILS: true
+        with:
+          commenter_type: plan
+          commenter_input: ${{ format('{0}{1}', steps.plan.outputs.stdout, steps.plan.outputs.stderr) }}
+          commenter_exitcode: ${{ steps.plan.outputs.exitcode }}
+
+  tfsec-checks:
+    name: Tfsec Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          working_directory: terraform
