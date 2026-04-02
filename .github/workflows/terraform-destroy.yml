@@ -1,0 +1,82 @@
+# -----------------------------------------------------------------------------
+# File:    terraform-destroy.yml
+# Purpose: Terraform Destroy — manual teardown with confirmation gate
+# Branch:  N/A (workflow_dispatch only — never runs automatically)
+# Last updated: YYYY-MM-DD
+#
+# Safety notes:
+#   - This workflow is workflow_dispatch only — it will never run automatically.
+#   - Requires explicit confirmation input "destroy" before proceeding.
+#   - State is updated in S3 after successful destroy.
+# -----------------------------------------------------------------------------
+
+name: Terraform Destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_destroy:
+        description: 'Type "destroy" to confirm'
+        required: true
+        default: ''
+
+jobs:
+  destroy:
+    name: Running Destroy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    if: github.event.inputs.confirm_destroy == 'destroy'
+
+    steps:
+      - name: Read versions
+        id: versions
+        run: |
+          echo "TF_VERSION=$(cat terraform/.terraform-version)" >> $GITHUB_OUTPUT
+          echo "CHECKOUT_VERSION=$(jq -r '.actions_checkout' .github/versions.json)" >> $GITHUB_OUTPUT
+          echo "SETUP_TF_VERSION=$(jq -r '.setup_terraform' .github/versions.json)" >> $GITHUB_OUTPUT
+          echo "AWS_CREDS_VERSION=$(jq -r '.configure_aws_credentials' .github/versions.json)" >> $GITHUB_OUTPUT
+
+      - name: Checkout
+        uses: actions/checkout@${{ steps.versions.outputs.CHECKOUT_VERSION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@${{ steps.versions.outputs.SETUP_TF_VERSION }}
+        with:
+          terraform_version: ${{ steps.versions.outputs.TF_VERSION }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@${{ steps.versions.outputs.AWS_CREDS_VERSION }}
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ secrets.TERRAFORM_ROLE_ARN }}
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="key=terraform.tfstate" \
+            -backend-config="region=${{ vars.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ vars.TF_STATE_LOCK_TABLE }}" \
+            -backend-config="encrypt=true"
+
+      - name: Terraform Plan Destroy
+        working-directory: ./terraform
+        run: terraform plan -destroy -input=false
+
+      - name: Terraform Destroy
+        working-directory: ./terraform
+        run: terraform destroy -auto-approve -input=false
+
+  abort-if-unconfirmed:
+    name: Abort — confirmation not matched
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm_destroy != 'destroy'
+
+    steps:
+      - name: Abort — confirmation not matched
+        run: |
+          echo "Destroy aborted: input must be exactly 'destroy'"
+          exit 1

@@ -31,7 +31,7 @@ resource "aws_db_instance" "main" {
   # Skip final snapshot on destroy for dev ease; set true for production safety
   skip_final_snapshot     = false
   final_snapshot_identifier = "${var.app_name}-db-final-snapshot"
-  deletion_protection     = true
+  deletion_protection     = false
 
   # Disable enhanced monitoring (saves ~$0.30/hour)
   monitoring_interval = 0

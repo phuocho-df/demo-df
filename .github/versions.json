@@ -1,0 +1,7 @@
+{
+  "actions_checkout": "v4.2.2",
+  "setup_terraform": "v3",
+  "configure_aws_credentials": "v4",
+  "terraform_pr_commenter": "master",
+  "tfsec_action": "v1.0.3"
+}
