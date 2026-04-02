@@ -3,6 +3,11 @@ output "github_deploy_role_arn" {
   value       = module.github_oidc.role_arn
 }
 
+output "github_terraform_role_arn" {
+  description = "IAM role ARN for Terraform CI/CD — set as TERRAFORM_ROLE_ARN secret in GitHub"
+  value       = module.github_oidc.terraform_role_arn
+}
+
 output "bastion_public_ip" {
   description = "Bastion host public IP — SSH tunnel entry point for RDS migration"
   value       = module.bastion.public_ip

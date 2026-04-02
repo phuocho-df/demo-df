@@ -24,26 +24,39 @@ jobs:
     if: github.ref == 'refs/heads/master'
 
     steps:
-      - name: Read versions
-        id: versions
-        run: |
-          echo "TF_VERSION=$(cat terraform/.terraform-version)" >> $GITHUB_OUTPUT
-          echo "CHECKOUT_VERSION=$(jq -r '.actions_checkout' .github/versions.json)" >> $GITHUB_OUTPUT
-          echo "SETUP_TF_VERSION=$(jq -r '.setup_terraform' .github/versions.json)" >> $GITHUB_OUTPUT
-          echo "AWS_CREDS_VERSION=$(jq -r '.configure_aws_credentials' .github/versions.json)" >> $GITHUB_OUTPUT
-
+      # Checkout first — version pinned because the version file lives in the repo
+      # and cannot be read before the workspace is populated.
       - name: Checkout
-        uses: actions/checkout@${{ steps.versions.outputs.CHECKOUT_VERSION }}
+        uses: actions/checkout@v4.2.2
+
+      # Read all other tool versions from files now that the workspace exists
+      # Only TF_VERSION is loaded dynamically — GitHub Actions does not support
+      # ${{ }} expressions in `uses:` fields, so action versions are hardcoded below.
+      - name: Read Terraform version
+        id: versions
+        run: echo "TF_VERSION=$(cat terraform/.terraform-version)" >> $GITHUB_OUTPUT
+
+      - name: Validate required repository variables
+        run: |
+          missing=()
+          [ -z "${{ vars.TF_STATE_BUCKET }}" ]    && missing+=("TF_STATE_BUCKET")
+          [ -z "${{ vars.TF_STATE_LOCK_TABLE }}" ] && missing+=("TF_STATE_LOCK_TABLE")
+          [ -z "${{ vars.AWS_ACCOUNT_ID }}" ]      && missing+=("AWS_ACCOUNT_ID")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "ERROR: Missing required GitHub repository variables: ${missing[*]}"
+            echo "Set them at: Settings → Secrets and variables → Actions → Variables"
+            exit 1
+          fi
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@${{ steps.versions.outputs.SETUP_TF_VERSION }}
+        uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ steps.versions.outputs.TF_VERSION }}
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@${{ steps.versions.outputs.AWS_CREDS_VERSION }}
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: us-east-1
           role-to-assume: ${{ secrets.TERRAFORM_ROLE_ARN }}
 
       - name: Terraform Init
@@ -52,7 +65,7 @@ jobs:
           terraform init \
             -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
             -backend-config="key=terraform.tfstate" \
-            -backend-config="region=${{ vars.AWS_REGION }}" \
+            -backend-config="region=us-east-1" \
             -backend-config="dynamodb_table=${{ vars.TF_STATE_LOCK_TABLE }}" \
             -backend-config="encrypt=true"
 
