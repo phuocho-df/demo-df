@@ -81,6 +81,7 @@ variable "bastion_public_key" {
 }
 
 variable "alarm_email" {
-  description = "Email address to receive CloudWatch alarm notifications"
+  description = "Email address to receive CloudWatch alarm notifications (optional)"
   type        = string
+  default     = null
 }

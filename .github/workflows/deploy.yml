@@ -1,9 +1,11 @@
 name: Deploy
 
 on:
-  push:
-    branches:
-      - master
+  # Only deploy after CI passes on master — prevents deploying broken code
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [master]
   workflow_dispatch:
 
 # Required for OIDC token exchange with AWS
@@ -15,10 +17,15 @@ jobs:
   deploy:
     name: Build and deploy to ECS
     runs-on: ubuntu-latest
+    # Gate on CI success; workflow_dispatch bypasses this condition intentionally
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Use the commit SHA that triggered CI, not the workflow_run event SHA
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
@@ -30,14 +37,23 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build, tag, and push image to ECR
         id: build-image
         env:
-          IMAGE_URI: ${{ secrets.ECR_REPOSITORY_URL }}:${{ github.sha }}
+          IMAGE_SHA: ${{ secrets.ECR_REPOSITORY_URL }}:${{ github.event.workflow_run.head_sha || github.sha }}
+          IMAGE_LATEST: ${{ secrets.ECR_REPOSITORY_URL }}:latest
         run: |
-          docker build -t $IMAGE_URI .
-          docker push $IMAGE_URI
-          echo "image=$IMAGE_URI" >> $GITHUB_OUTPUT
+          docker buildx build \
+            --cache-from type=gha \
+            --cache-to type=gha,mode=max \
+            --tag $IMAGE_SHA \
+            --tag $IMAGE_LATEST \
+            --push \
+            .
+          echo "image=$IMAGE_SHA" >> $GITHUB_OUTPUT
 
       - name: Download current ECS task definition
         run: |
@@ -60,3 +76,8 @@ jobs:
           service: ${{ secrets.ECS_SERVICE_NAME }}
           cluster: ${{ secrets.ECS_CLUSTER_NAME }}
           wait-for-service-stability: true
+
+      - name: Smoke test
+        run: |
+          curl --fail --retry 3 --retry-delay 5 \
+            https://${{ vars.TF_VAR_DOMAIN_NAME }}/api/health

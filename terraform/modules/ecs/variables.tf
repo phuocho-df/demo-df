@@ -87,8 +87,9 @@ variable "max_capacity" {
 }
 
 variable "alarm_email" {
-  description = "Email address to receive CloudWatch alarm notifications"
+  description = "Email address to receive CloudWatch alarm notifications (optional)"
   type        = string
+  default     = null
 }
 
 # SSM parameter ARNs for secrets (injected via valueFrom)
