@@ -5,6 +5,8 @@ resource "aws_db_subnet_group" "main" {
   tags = { Name = "${var.app_name}-db-subnet-group" }
 }
 
+# tfsec:ignore:aws-rds-enable-performance-insights — disabled intentionally to reduce cost
+# tfsec:ignore:aws-rds-enable-iam-auth — IAM auth not required for this app's connection pattern
 resource "aws_db_instance" "main" {
   identifier        = "${var.app_name}-db"
   engine            = "postgres"
@@ -37,8 +39,6 @@ resource "aws_db_instance" "main" {
   monitoring_interval = 0
 
   storage_encrypted          = true
-  # tfsec:ignore:aws-rds-enable-iam-auth — IAM auth not required for this app's connection pattern
-  # tfsec:ignore:aws-rds-enable-performance-insights — disabled intentionally to reduce cost
   auto_minor_version_upgrade = true
   publicly_accessible        = false
 
