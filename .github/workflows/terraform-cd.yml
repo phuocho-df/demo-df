@@ -83,6 +83,7 @@ jobs:
           TF_VAR_cors_allowed_origins: ${{ vars.TF_VAR_CORS_ALLOWED_ORIGINS }}
           TF_VAR_github_repo: ${{ vars.TF_VAR_GITHUB_REPO }}
           TF_VAR_certificate_arn: ${{ vars.TF_VAR_CERTIFICATE_ARN }}
+          TF_VAR_alarm_email: ${{ vars.TF_VAR_ALARM_EMAIL }}
 
       - name: Terraform Apply
         working-directory: ./terraform
@@ -96,4 +97,5 @@ jobs:
           TF_VAR_cors_allowed_origins: ${{ vars.TF_VAR_CORS_ALLOWED_ORIGINS }}
           TF_VAR_github_repo: ${{ vars.TF_VAR_GITHUB_REPO }}
           TF_VAR_certificate_arn: ${{ vars.TF_VAR_CERTIFICATE_ARN }}
+          TF_VAR_alarm_email: ${{ vars.TF_VAR_ALARM_EMAIL }}
         run: terraform apply -auto-approve -input=false

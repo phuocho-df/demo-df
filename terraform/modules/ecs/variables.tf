@@ -86,6 +86,11 @@ variable "max_capacity" {
   default     = 2
 }
 
+variable "alarm_email" {
+  description = "Email address to receive CloudWatch alarm notifications"
+  type        = string
+}
+
 # SSM parameter ARNs for secrets (injected via valueFrom)
 variable "ssm_secret_key_arn" {
   description = "SSM parameter ARN for Django SECRET_KEY"

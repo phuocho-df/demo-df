@@ -120,6 +120,62 @@ resource "aws_ecs_service" "app" {
   tags = { Name = "${var.app_name}-service" }
 }
 
+# SNS topic for CloudWatch alarm notifications
+resource "aws_sns_topic" "alarms" {
+  name = "${var.app_name}-alarms"
+  tags = { Name = "${var.app_name}-alarms" }
+}
+
+resource "aws_sns_topic_subscription" "email" {
+  topic_arn = aws_sns_topic.alarms.arn
+  protocol  = "email"
+  endpoint  = var.alarm_email
+}
+
+# CloudWatch alarm — ECS CPU utilization high
+resource "aws_cloudwatch_metric_alarm" "ecs_cpu_high" {
+  alarm_name          = "${var.app_name}-ecs-cpu-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/ECS"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 85
+  alarm_description   = "ECS CPU utilization > 85% for 10 minutes"
+  alarm_actions       = [aws_sns_topic.alarms.arn]
+  ok_actions          = [aws_sns_topic.alarms.arn]
+
+  dimensions = {
+    ClusterName = aws_ecs_cluster.main.name
+    ServiceName = aws_ecs_service.app.name
+  }
+
+  tags = { Name = "${var.app_name}-ecs-cpu-high" }
+}
+
+# CloudWatch alarm — ECS memory utilization high
+resource "aws_cloudwatch_metric_alarm" "ecs_memory_high" {
+  alarm_name          = "${var.app_name}-ecs-memory-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "MemoryUtilization"
+  namespace           = "AWS/ECS"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 85
+  alarm_description   = "ECS memory utilization > 85% for 10 minutes"
+  alarm_actions       = [aws_sns_topic.alarms.arn]
+  ok_actions          = [aws_sns_topic.alarms.arn]
+
+  dimensions = {
+    ClusterName = aws_ecs_cluster.main.name
+    ServiceName = aws_ecs_service.app.name
+  }
+
+  tags = { Name = "${var.app_name}-ecs-memory-high" }
+}
+
 # Auto-scaling target — tracks the ECS service desired count
 resource "aws_appautoscaling_target" "app" {
   max_capacity       = var.max_capacity

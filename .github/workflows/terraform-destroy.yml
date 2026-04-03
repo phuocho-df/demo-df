@@ -87,6 +87,7 @@ jobs:
           TF_VAR_jwt_signing_key: ${{ secrets.TF_VAR_JWT_SIGNING_KEY }}
           TF_VAR_github_token: ${{ secrets.TF_VAR_GITHUB_TOKEN }}
           TF_VAR_bastion_public_key: ${{ secrets.TF_VAR_BASTION_PUBLIC_KEY }}
+          TF_VAR_alarm_email: ${{ vars.TF_VAR_ALARM_EMAIL }}
         run: terraform plan -destroy -input=false
 
       - name: Terraform Destroy
@@ -101,6 +102,7 @@ jobs:
           TF_VAR_jwt_signing_key: ${{ secrets.TF_VAR_JWT_SIGNING_KEY }}
           TF_VAR_github_token: ${{ secrets.TF_VAR_GITHUB_TOKEN }}
           TF_VAR_bastion_public_key: ${{ secrets.TF_VAR_BASTION_PUBLIC_KEY }}
+          TF_VAR_alarm_email: ${{ vars.TF_VAR_ALARM_EMAIL }}
         run: terraform destroy -auto-approve -input=false
 
   abort-if-unconfirmed:

@@ -79,3 +79,8 @@ variable "bastion_public_key" {
   description = "SSH public key content for the bastion host key pair (paste contents of ~/.ssh/id_rsa.pub)"
   type        = string
 }
+
+variable "alarm_email" {
+  description = "Email address to receive CloudWatch alarm notifications"
+  type        = string
+}

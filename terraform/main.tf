@@ -149,6 +149,8 @@ module "ecs" {
   ssm_secret_key_arn      = module.ssm.secret_key_arn
   ssm_jwt_signing_key_arn = module.ssm.jwt_signing_key_arn
   ssm_db_password_arn     = module.ssm.db_password_arn
+
+  alarm_email = var.alarm_email
 }
 
 # Route53 ALIAS record — points domain apex to ALB (no IP hardcoding, auto-updates with ALB)
