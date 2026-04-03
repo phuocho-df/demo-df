@@ -1,6 +1,6 @@
 # -----------------------------------------------------------------------------
 # File:    terraform-ci.yml
-# Purpose: Terraform CI — fmt, init, validate, plan + tfsec security scan
+# Purpose: Terraform CI — fmt, init, validate, plan + tfsec + checkov scans
 # Branch:  master (pull_request target)
 # Last updated: YYYY-MM-DD
 # -----------------------------------------------------------------------------
@@ -106,3 +106,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           working_directory: terraform
+
+  checkov-checks:
+    name: Checkov Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: terraform
+          framework: terraform
+          quiet: true
+          output_format: cli

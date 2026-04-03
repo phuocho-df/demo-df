@@ -122,8 +122,9 @@ resource "aws_ecs_service" "app" {
 
 # SNS topic for CloudWatch alarm notifications
 resource "aws_sns_topic" "alarms" {
-  name = "${var.app_name}-alarms"
-  tags = { Name = "${var.app_name}-alarms" }
+  name              = "${var.app_name}-alarms"
+  kms_master_key_id = "alias/aws/sns"
+  tags              = { Name = "${var.app_name}-alarms" }
 }
 
 resource "aws_sns_topic_subscription" "email" {
