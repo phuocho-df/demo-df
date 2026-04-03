@@ -1,3 +1,4 @@
+# tfsec:ignore:aws-cloudwatch-log-group-customer-key — KMS encryption not required for app logs
 resource "aws_cloudwatch_log_group" "app" {
   name              = "/${var.app_name}/ecs"
   retention_in_days = 7 # Minimal retention to keep CloudWatch cost low
@@ -5,6 +6,7 @@ resource "aws_cloudwatch_log_group" "app" {
   tags = { Name = "${var.app_name}-logs" }
 }
 
+# tfsec:ignore:aws-ecs-enable-container-insight — container insights disabled intentionally (cost)
 resource "aws_ecs_cluster" "main" {
   name = "${var.app_name}-cluster"
 

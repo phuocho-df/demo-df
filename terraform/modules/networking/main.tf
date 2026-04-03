@@ -2,6 +2,7 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
+# tfsec:ignore:aws-ec2-require-vpc-flow-logs-for-all-vpcs — VPC flow logs skipped intentionally (cost)
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
@@ -94,27 +95,27 @@ resource "aws_security_group" "alb" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description = "HTTP" #tfsec:ignore:aws-ec2-no-public-ingress-sgr — public ALB requires internet ingress
+    description = "HTTP"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["0.0.0.0/0"] # tfsec:ignore:aws-ec2-no-public-ingress-sgr — public ALB requires internet ingress
   }
 
   ingress {
-    description = "HTTPS" #tfsec:ignore:aws-ec2-no-public-ingress-sgr — public ALB requires internet ingress
+    description = "HTTPS"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["0.0.0.0/0"] # tfsec:ignore:aws-ec2-no-public-ingress-sgr — public ALB requires internet ingress
   }
 
   egress {
-    description = "All outbound to reach ECS targets" #tfsec:ignore:aws-ec2-no-public-egress-sgr — ALB must reach ECS tasks
+    description = "All outbound to reach ECS targets"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["0.0.0.0/0"] # tfsec:ignore:aws-ec2-no-public-egress-sgr — ALB must reach ECS tasks
   }
 
   tags = { Name = "${var.app_name}-sg-alb" }
@@ -135,11 +136,11 @@ resource "aws_security_group" "ecs" {
   }
 
   egress {
-    description = "All outbound for ECR/SSM/internet access" #tfsec:ignore:aws-ec2-no-public-egress-sgr — ECS tasks need internet for ECR pulls and SSM
+    description = "All outbound for ECR/SSM/internet access"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["0.0.0.0/0"] # tfsec:ignore:aws-ec2-no-public-egress-sgr — ECS tasks need internet for ECR pulls and SSM
   }
 
   tags = { Name = "${var.app_name}-sg-ecs" }
@@ -168,11 +169,11 @@ resource "aws_security_group" "rds" {
   }
 
   egress {
-    description = "All outbound" #tfsec:ignore:aws-ec2-no-public-egress-sgr — RDS egress low risk, simplifies rule management
+    description = "All outbound"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["0.0.0.0/0"] # tfsec:ignore:aws-ec2-no-public-egress-sgr — RDS egress low risk, simplifies rule management
   }
 
   tags = { Name = "${var.app_name}-sg-rds" }
@@ -185,19 +186,19 @@ resource "aws_security_group" "bastion" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description = "SSH" #tfsec:ignore:aws-ec2-no-public-ingress-sgr — bastion is the intentional public SSH entry point
+    description = "SSH"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["0.0.0.0/0"] # tfsec:ignore:aws-ec2-no-public-ingress-sgr — bastion is the intentional public SSH entry point
   }
 
   egress {
-    description = "All outbound for package installs" #tfsec:ignore:aws-ec2-no-public-egress-sgr — bastion needs internet for dnf/psql
+    description = "All outbound for package installs"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["0.0.0.0/0"] # tfsec:ignore:aws-ec2-no-public-egress-sgr — bastion needs internet for dnf/psql
   }
 
   tags = { Name = "${var.app_name}-sg-bastion" }

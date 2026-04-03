@@ -31,12 +31,14 @@ resource "aws_db_instance" "main" {
   # Skip final snapshot on destroy for dev ease; set true for production safety
   skip_final_snapshot     = false
   final_snapshot_identifier = "${var.app_name}-db-final-snapshot"
-  deletion_protection     = false
+  deletion_protection     = false # tfsec:ignore:aws-rds-enable-deletion-protection — dev env, intentional
 
   # Disable enhanced monitoring (saves ~$0.30/hour)
   monitoring_interval = 0
 
   storage_encrypted          = true
+  # tfsec:ignore:aws-rds-enable-iam-auth — IAM auth not required for this app's connection pattern
+  # tfsec:ignore:aws-rds-enable-performance-insights — disabled intentionally to reduce cost
   auto_minor_version_upgrade = true
   publicly_accessible        = false
 

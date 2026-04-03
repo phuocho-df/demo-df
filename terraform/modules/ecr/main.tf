@@ -1,3 +1,4 @@
+# tfsec:ignore:aws-ecr-repository-customer-key — KMS encryption not required, AWS-managed key sufficient
 resource "aws_ecr_repository" "app" {
   name                 = var.app_name
   image_tag_mutability = "IMMUTABLE"
