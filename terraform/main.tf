@@ -37,11 +37,70 @@ module "github_oidc" {
   app_name = var.app_name
 
   github_repo = var.github_repo
+}
 
-  ecr_repository_arn      = module.ecr.repository_arn
-  ecs_service_arn         = module.ecs.service_arn
-  task_execution_role_arn = module.iam.task_execution_role_arn
-  task_role_arn           = module.iam.task_role_arn
+# Deploy role policy — attached after ECR/ECS/IAM exist (not during bootstrap)
+data "aws_iam_policy_document" "github_deploy" {
+  # ECR auth token is account-scoped — no resource restriction possible
+  statement {
+    sid       = "ECRAuth"
+    effect    = "Allow"
+    actions   = ["ecr:GetAuthorizationToken"]
+    resources = ["*"]
+  }
+
+  # ECR image push/pull scoped to this app's repository only
+  statement {
+    sid    = "ECRPush"
+    effect = "Allow"
+    actions = [
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:GetDownloadUrlForLayer",
+      "ecr:BatchGetImage",
+      "ecr:PutImage",
+      "ecr:InitiateLayerUpload",
+      "ecr:UploadLayerPart",
+      "ecr:CompleteLayerUpload",
+    ]
+    resources = [module.ecr.repository_arn]
+  }
+
+  statement {
+    sid    = "ECSTaskDef"
+    effect = "Allow"
+    actions = [
+      "ecs:DescribeTaskDefinition",
+      "ecs:RegisterTaskDefinition",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "ECSService"
+    effect = "Allow"
+    actions = [
+      "ecs:UpdateService",
+      "ecs:DescribeServices",
+    ]
+    resources = [module.ecs.service_arn]
+  }
+
+  # PassRole required so ECS can attach execution and task roles to new task def revisions
+  statement {
+    sid     = "IAMPassRole"
+    effect  = "Allow"
+    actions = ["iam:PassRole"]
+    resources = [
+      module.iam.task_execution_role_arn,
+      module.iam.task_role_arn,
+    ]
+  }
+}
+
+resource "aws_iam_role_policy" "github_deploy" {
+  name   = "${var.app_name}-github-deploy-policy"
+  role   = module.github_oidc.deploy_role_id
+  policy = data.aws_iam_policy_document.github_deploy.json
 }
 
 module "bastion" {

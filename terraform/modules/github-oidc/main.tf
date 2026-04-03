@@ -50,71 +50,8 @@ resource "aws_iam_role" "github_deploy" {
   tags = { Name = "${var.app_name}-github-deploy" }
 }
 
-# Least-privilege deploy policy: ECR push + ECS task def registration + service update
-data "aws_iam_policy_document" "github_deploy" {
-  # ECR auth token is account-scoped — no resource restriction possible
-  statement {
-    sid       = "ECRAuth"
-    effect    = "Allow"
-    actions   = ["ecr:GetAuthorizationToken"]
-    resources = ["*"]
-  }
-
-  # ECR image push/pull scoped to this app's repository only
-  statement {
-    sid    = "ECRPush"
-    effect = "Allow"
-    actions = [
-      "ecr:BatchCheckLayerAvailability",
-      "ecr:GetDownloadUrlForLayer",
-      "ecr:BatchGetImage",
-      "ecr:PutImage",
-      "ecr:InitiateLayerUpload",
-      "ecr:UploadLayerPart",
-      "ecr:CompleteLayerUpload",
-    ]
-    resources = [var.ecr_repository_arn]
-  }
-
-  # ECS task definition — DescribeTaskDefinition has no resource-level support
-  statement {
-    sid    = "ECSTaskDef"
-    effect = "Allow"
-    actions = [
-      "ecs:DescribeTaskDefinition",
-      "ecs:RegisterTaskDefinition",
-    ]
-    resources = ["*"]
-  }
-
-  # ECS service update scoped to this app's service only
-  statement {
-    sid    = "ECSService"
-    effect = "Allow"
-    actions = [
-      "ecs:UpdateService",
-      "ecs:DescribeServices",
-    ]
-    resources = [var.ecs_service_arn]
-  }
-
-  # PassRole required so ECS can attach execution and task roles to new task def revisions
-  statement {
-    sid     = "IAMPassRole"
-    effect  = "Allow"
-    actions = ["iam:PassRole"]
-    resources = [
-      var.task_execution_role_arn,
-      var.task_role_arn,
-    ]
-  }
-}
-
-resource "aws_iam_role_policy" "github_deploy" {
-  name   = "${var.app_name}-github-deploy-policy"
-  role   = aws_iam_role.github_deploy.id
-  policy = data.aws_iam_policy_document.github_deploy.json
-}
+# Deploy role policy is managed externally in main.tf after ECR/ECS/IAM are created,
+# avoiding bootstrap dependency on those modules.
 
 # Terraform role — assumed by GitHub Actions terraform-ci/cd/destroy workflows
 # Needs broad permissions to create/modify/destroy all managed AWS resources
