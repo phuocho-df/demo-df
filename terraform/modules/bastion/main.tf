@@ -30,6 +30,17 @@ resource "aws_instance" "bastion" {
   key_name                    = aws_key_pair.bastion.key_name
   associate_public_ip_address = true
 
+  # Require IMDSv2 token — prevents SSRF attacks from leaking instance metadata
+  metadata_options {
+    http_tokens   = "required"
+    http_endpoint = "enabled"
+  }
+
+  # Encrypt root volume at rest
+  root_block_device {
+    encrypted = true
+  }
+
   # Install PostgreSQL 15 client so pg_dump/psql can run directly on the bastion
   user_data = <<-EOF
     #!/bin/bash

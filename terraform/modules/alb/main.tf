@@ -1,9 +1,10 @@
 resource "aws_lb" "main" {
-  name               = "${var.app_name}-alb"
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [var.security_group_id]
-  subnets            = var.subnet_ids
+  name                       = "${var.app_name}-alb"
+  internal                   = false # tfsec:ignore:aws-elb-alb-not-public — public-facing ALB by design
+  load_balancer_type         = "application"
+  security_groups            = [var.security_group_id]
+  subnets                    = var.subnet_ids
+  drop_invalid_header_fields = true
 
   tags = { Name = "${var.app_name}-alb" }
 }

@@ -36,6 +36,7 @@ resource "aws_db_instance" "main" {
   # Disable enhanced monitoring (saves ~$0.30/hour)
   monitoring_interval = 0
 
+  storage_encrypted          = true
   auto_minor_version_upgrade = true
   publicly_accessible        = false
 

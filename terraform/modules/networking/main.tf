@@ -94,7 +94,7 @@ resource "aws_security_group" "alb" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description = "HTTP"
+    description = "HTTP" #tfsec:ignore:aws-ec2-no-public-ingress-sgr — public ALB requires internet ingress
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -102,7 +102,7 @@ resource "aws_security_group" "alb" {
   }
 
   ingress {
-    description = "HTTPS"
+    description = "HTTPS" #tfsec:ignore:aws-ec2-no-public-ingress-sgr — public ALB requires internet ingress
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
@@ -110,6 +110,7 @@ resource "aws_security_group" "alb" {
   }
 
   egress {
+    description = "All outbound to reach ECS targets" #tfsec:ignore:aws-ec2-no-public-egress-sgr — ALB must reach ECS tasks
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -134,6 +135,7 @@ resource "aws_security_group" "ecs" {
   }
 
   egress {
+    description = "All outbound for ECR/SSM/internet access" #tfsec:ignore:aws-ec2-no-public-egress-sgr — ECS tasks need internet for ECR pulls and SSM
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -166,6 +168,7 @@ resource "aws_security_group" "rds" {
   }
 
   egress {
+    description = "All outbound" #tfsec:ignore:aws-ec2-no-public-egress-sgr — RDS egress low risk, simplifies rule management
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -182,7 +185,7 @@ resource "aws_security_group" "bastion" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description = "SSH"
+    description = "SSH" #tfsec:ignore:aws-ec2-no-public-ingress-sgr — bastion is the intentional public SSH entry point
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
@@ -190,6 +193,7 @@ resource "aws_security_group" "bastion" {
   }
 
   egress {
+    description = "All outbound for package installs" #tfsec:ignore:aws-ec2-no-public-egress-sgr — bastion needs internet for dnf/psql
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
