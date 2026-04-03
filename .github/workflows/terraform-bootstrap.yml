@@ -60,17 +60,14 @@ jobs:
         run: terraform init
 
       # Import existing resources into state if they already exist (idempotent re-run).
-      # Uses ${VAR:-default} because terraform output exits 0 (not 1) when no outputs exist,
-      # so || fallback never fires — shell parameter expansion handles empty strings correctly.
+      # Hardcoded names match var.app_name default in variables.tf ("django-template").
+      # Note: terraform output -raw sends warnings to STDOUT (not stderr) when no outputs
+      # exist, making dynamic lookup unreliable — hardcoding is simpler and correct here.
       - name: Import existing bootstrap resources (if any)
         working-directory: ./terraform/bootstrap
         run: |
-          BUCKET=$(terraform output -raw tf_state_bucket 2>/dev/null)
-          BUCKET=${BUCKET:-django-template-tf-state}
-          TABLE=$(terraform output -raw tf_state_lock_table 2>/dev/null)
-          TABLE=${TABLE:-django-template-tf-lock}
-          terraform import aws_s3_bucket.tf_state "$BUCKET" 2>/dev/null || true
-          terraform import aws_dynamodb_table.tf_lock "$TABLE" 2>/dev/null || true
+          terraform import aws_s3_bucket.tf_state "django-template-tf-state" &>/dev/null || true
+          terraform import aws_dynamodb_table.tf_lock "django-template-tf-lock" &>/dev/null || true
 
       - name: Terraform Apply (bootstrap)
         working-directory: ./terraform/bootstrap
