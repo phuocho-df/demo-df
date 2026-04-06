@@ -123,6 +123,7 @@ resource "aws_security_group" "alb" {
 
 # Security group: ECS tasks — accepts port 80 from ALB only
 # Additional ingress rules (e.g. reverse proxy) are added via aws_security_group_rule in main.tf
+# lifecycle.ignore_changes on ingress prevents Terraform from removing externally-managed rules
 resource "aws_security_group" "ecs" {
   name        = "${var.app_name}-sg-ecs"
   description = "Allow port 80 inbound from ALB"
@@ -142,6 +143,11 @@ resource "aws_security_group" "ecs" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"] # tfsec:ignore:aws-ec2-no-public-egress-sgr — ECS tasks need internet for ECR pulls and SSM
+  }
+
+  # Prevent Terraform from removing ingress rules managed by aws_security_group_rule resources
+  lifecycle {
+    ignore_changes = [ingress]
   }
 
   tags = { Name = "${var.app_name}-sg-ecs" }
