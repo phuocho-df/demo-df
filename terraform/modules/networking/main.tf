@@ -121,29 +121,34 @@ resource "aws_security_group" "alb" {
   tags = { Name = "${var.app_name}-sg-alb" }
 }
 
-# Security group: ECS tasks — accepts port 80 from ALB only
+# Security group: ECS tasks — rules managed separately via aws_security_group_rule to allow
+# external modules (e.g. reverse proxy) to add ingress rules without conflict
 resource "aws_security_group" "ecs" {
   name        = "${var.app_name}-sg-ecs"
   description = "Allow port 80 inbound from ALB"
   vpc_id      = aws_vpc.main.id
 
-  ingress {
-    description     = "HTTP from ALB"
-    from_port       = 80
-    to_port         = 80
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
-  }
-
+  # tfsec:ignore:aws-ec2-no-public-egress-sgr — ECS tasks need internet for ECR pulls and SSM
   egress {
     description = "All outbound for ECR/SSM/internet access"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"] # tfsec:ignore:aws-ec2-no-public-egress-sgr — ECS tasks need internet for ECR pulls and SSM
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   tags = { Name = "${var.app_name}-sg-ecs" }
+}
+
+# Separate rule so external modules can add more ingress without inline conflict
+resource "aws_security_group_rule" "ecs_from_alb" {
+  type                     = "ingress"
+  description              = "HTTP from ALB"
+  from_port                = 80
+  to_port                  = 80
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.ecs.id
+  source_security_group_id = aws_security_group.alb.id
 }
 
 # Security group: RDS — accepts port 5432 from ECS tasks and bastion host
