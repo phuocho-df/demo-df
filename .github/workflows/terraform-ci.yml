@@ -1,16 +1,17 @@
 # -----------------------------------------------------------------------------
 # File:    terraform-ci.yml
 # Purpose: Terraform CI — fmt, init, validate, plan + tfsec + checkov scans
-# Branch:  master (pull_request target)
+# Branch:  all branches
 # Last updated: YYYY-MM-DD
 # -----------------------------------------------------------------------------
 
 name: Terraform CI
 
 on:
+  push:
+    paths:
+      - 'terraform/**'
   pull_request:
-    branches:
-      - master
     paths:
       - 'terraform/**'
   workflow_dispatch:
