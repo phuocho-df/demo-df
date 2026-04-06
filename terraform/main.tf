@@ -103,6 +103,12 @@ resource "aws_iam_role_policy" "github_deploy" {
   policy = data.aws_iam_policy_document.github_deploy.json
 }
 
+module "cloudmap" {
+  source   = "./modules/cloudmap"
+  app_name = var.app_name
+  vpc_id   = module.networking.vpc_id
+}
+
 # tfsec:ignore:aws-ec2-add-description-to-security-group-rule — descriptions already present on each ingress/egress block
 # Security group for reverse proxy — allows HTTP/HTTPS from internet, outbound to ALB
 resource "aws_security_group" "reverse_proxy" {
@@ -143,7 +149,7 @@ module "reverse_proxy" {
   subnet_id         = module.networking.public_subnet_ids[0]
   security_group_id = aws_security_group.reverse_proxy.id
   domain_name       = var.domain_name
-  upstream_url      = module.alb.alb_dns_name
+  upstream_url      = module.cloudmap.service_dns # resolve ECS task IPs via Cloud Map
 }
 
 module "bastion" {
@@ -194,6 +200,8 @@ module "ecs" {
   ssm_db_password_arn     = module.ssm.db_password_arn
 
   alarm_email = var.alarm_email
+
+  cloudmap_service_arn = module.cloudmap.service_arn
 }
 
 # Route53 weighted record — ALB (weight=100, primary traffic)

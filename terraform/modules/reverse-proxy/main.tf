@@ -44,7 +44,8 @@ resource "aws_instance" "reverse_proxy" {
     encrypted = true
   }
 
-  # Install and configure Nginx as reverse proxy to the ALB
+  # Install and configure Nginx as reverse proxy
+  # Uses AWS VPC DNS resolver (169.254.169.253) to resolve Cloud Map or ALB DNS dynamically
   user_data = <<-EOF
     #!/bin/bash
     dnf install -y nginx
@@ -54,8 +55,12 @@ resource "aws_instance" "reverse_proxy" {
       listen 80;
       server_name ${var.domain_name};
 
+      # AWS VPC DNS resolver — required for dynamic DNS resolution (Cloud Map, ALB)
+      resolver 169.254.169.253 valid=10s;
+      set \$upstream ${var.upstream_url};
+
       location / {
-        proxy_pass http://${var.upstream_url};
+        proxy_pass http://\$upstream;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
