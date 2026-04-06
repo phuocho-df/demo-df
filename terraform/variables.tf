@@ -89,4 +89,5 @@ variable "alarm_email" {
 variable "certbot_email" {
   description = "Email address for Let's Encrypt certificate registration (required for reverse proxy SSL)"
   type        = string
+  default     = ""
 }
