@@ -127,6 +127,7 @@ resource "aws_security_group" "reverse_proxy" {
   }
 
   egress {
+    description = "All outbound traffic to ALB and internet"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
