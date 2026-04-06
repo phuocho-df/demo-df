@@ -76,6 +76,21 @@ jobs:
             -backend-config="dynamodb_table=${{ vars.TF_STATE_LOCK_TABLE }}" \
             -backend-config="encrypt=true"
 
+      - name: Terraform Refresh
+        working-directory: ./terraform
+        env:
+          TF_VAR_domain_name: "dfdemo.space"
+          TF_VAR_cors_allowed_origins: "https://dfdemo.space"
+          TF_VAR_certificate_arn: "arn:aws:acm:us-east-1:039612870452:certificate/814be692-6e4e-4882-b316-62c24a47a3ed"
+          TF_VAR_github_repo: "phuocho-df/demo-df"
+          TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
+          TF_VAR_secret_key: ${{ secrets.TF_VAR_SECRET_KEY }}
+          TF_VAR_jwt_signing_key: ${{ secrets.TF_VAR_JWT_SIGNING_KEY }}
+          TF_VAR_github_token: ${{ secrets.TF_VAR_GITHUB_TOKEN }}
+          TF_VAR_bastion_public_key: ${{ secrets.TF_VAR_BASTION_PUBLIC_KEY }}
+          TF_VAR_alarm_email: ${{ vars.TF_VAR_ALARM_EMAIL }}
+        run: terraform refresh -input=false || true  # sync state with actual AWS, ignore errors if resources already gone
+
       - name: Terraform Plan Destroy
         working-directory: ./terraform
         env:
