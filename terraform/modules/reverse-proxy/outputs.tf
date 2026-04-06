@@ -1,6 +1,6 @@
 output "public_ip" {
-  description = "Public IP address of the reverse proxy instance"
-  value       = aws_instance.reverse_proxy.public_ip
+  description = "Elastic IP address of the reverse proxy (static, use for Route53)"
+  value       = aws_eip.reverse_proxy.public_ip
 }
 
 output "instance_id" {

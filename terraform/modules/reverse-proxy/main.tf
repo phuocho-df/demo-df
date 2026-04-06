@@ -14,13 +14,24 @@ data "aws_ami" "amazon_linux_2023" {
   }
 }
 
+# Elastic IP — static public IP for Route53 weighted record (avoids IP change on restart)
+resource "aws_eip" "reverse_proxy" {
+  domain = "vpc"
+  tags   = { Name = "${var.app_name}-reverse-proxy-eip" }
+}
+
+resource "aws_eip_association" "reverse_proxy" {
+  instance_id   = aws_instance.reverse_proxy.id
+  allocation_id = aws_eip.reverse_proxy.id
+}
+
 # Reverse proxy EC2 instance running Nginx — sits in front of the ALB
 resource "aws_instance" "reverse_proxy" {
   ami                         = data.aws_ami.amazon_linux_2023.id
   instance_type               = "t3.micro"
   subnet_id                   = var.subnet_id
   vpc_security_group_ids      = [var.security_group_id]
-  associate_public_ip_address = true
+  associate_public_ip_address = false # EIP handles public IP
 
   # Require IMDSv2 token — prevents SSRF attacks from leaking instance metadata
   metadata_options {

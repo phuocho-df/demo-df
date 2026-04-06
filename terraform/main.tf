@@ -103,6 +103,47 @@ resource "aws_iam_role_policy" "github_deploy" {
   policy = data.aws_iam_policy_document.github_deploy.json
 }
 
+# Security group for reverse proxy — allows HTTP/HTTPS from internet, outbound to ALB
+resource "aws_security_group" "reverse_proxy" {
+  name        = "${var.app_name}-reverse-proxy-sg"
+  description = "Allow HTTP/HTTPS inbound, all outbound"
+  vpc_id      = module.networking.vpc_id
+
+  ingress {
+    description = "HTTP from internet"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] # tfsec:ignore:aws-ec2-no-public-ingress-sgr
+  }
+
+  ingress {
+    description = "HTTPS from internet"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] # tfsec:ignore:aws-ec2-no-public-ingress-sgr
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"] # tfsec:ignore:aws-ec2-no-public-egress-sgr
+  }
+
+  tags = { Name = "${var.app_name}-reverse-proxy-sg" }
+}
+
+module "reverse_proxy" {
+  source            = "./modules/reverse-proxy"
+  app_name          = var.app_name
+  subnet_id         = module.networking.public_subnet_ids[0]
+  security_group_id = aws_security_group.reverse_proxy.id
+  domain_name       = var.domain_name
+  upstream_url      = module.alb.alb_dns_name
+}
+
 module "bastion" {
   source            = "./modules/bastion"
   app_name          = var.app_name
@@ -153,17 +194,37 @@ module "ecs" {
   alarm_email = var.alarm_email
 }
 
-# Route53 ALIAS record — points domain apex to ALB (no IP hardcoding, auto-updates with ALB)
-resource "aws_route53_record" "apex" {
-  zone_id = "Z00838981JEIAH0UK6QW6"
-  name    = var.domain_name
-  type    = "A"
+# Route53 weighted record — ALB (weight=100, primary traffic)
+resource "aws_route53_record" "apex_alb" {
+  zone_id        = "Z00838981JEIAH0UK6QW6"
+  name           = var.domain_name
+  type           = "A"
+  set_identifier = "alb"
+
+  weighted_routing_policy {
+    weight = 100
+  }
 
   alias {
     name                   = module.alb.alb_dns_name
     zone_id                = module.alb.alb_zone_id
     evaluate_target_health = true
   }
+}
+
+# Route53 weighted record — Reverse Proxy EIP (weight=0, standby — increase to shift traffic)
+resource "aws_route53_record" "apex_proxy" {
+  zone_id        = "Z00838981JEIAH0UK6QW6"
+  name           = var.domain_name
+  type           = "A"
+  ttl            = 60
+  set_identifier = "reverse-proxy"
+
+  weighted_routing_policy {
+    weight = 0
+  }
+
+  records = [module.reverse_proxy.public_ip]
 }
 
 # Route53 health check — monitors /api/health endpoint over HTTPS
