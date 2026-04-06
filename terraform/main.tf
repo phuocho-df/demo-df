@@ -162,6 +162,7 @@ module "reverse_proxy" {
   domain_name       = var.domain_name
   upstream_url      = module.cloudmap.service_dns # resolve ECS task IPs via Cloud Map
   certbot_email     = var.certbot_email
+  cert_bucket       = "${var.app_name}-letsencrypt-cert"
 }
 
 module "bastion" {

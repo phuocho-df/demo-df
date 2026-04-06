@@ -27,3 +27,8 @@ variable "certbot_email" {
   description = "Email address for Let's Encrypt certificate notifications and recovery"
   type        = string
 }
+
+variable "cert_bucket" {
+  description = "S3 bucket name for Let's Encrypt cert backup/restore (managed outside Terraform)"
+  type        = string
+}

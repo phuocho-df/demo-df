@@ -14,35 +14,6 @@ data "aws_ami" "amazon_linux_2023" {
   }
 }
 
-# S3 bucket to persist Let's Encrypt cert across instance recreations
-# tfsec:ignore:aws-s3-enable-bucket-logging — access logging not needed for cert backup
-# tfsec:ignore:aws-s3-enable-versioning — single cert object, versioning not needed
-resource "aws_s3_bucket" "cert" {
-  bucket        = "${var.app_name}-letsencrypt-cert"
-  force_destroy = true
-
-  tags = { Name = "${var.app_name}-letsencrypt-cert" }
-}
-
-resource "aws_s3_bucket_server_side_encryption_configuration" "cert" {
-  bucket = aws_s3_bucket.cert.id
-
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
-}
-
-# tfsec:ignore:aws-s3-no-public-access-block — bucket is private, no ACL needed
-resource "aws_s3_bucket_public_access_block" "cert" {
-  bucket                  = aws_s3_bucket.cert.id
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
-}
-
 # IAM role for EC2 — grants certbot Route53 permission + S3 cert backup/restore
 resource "aws_iam_role" "reverse_proxy" {
   name = "${var.app_name}-reverse-proxy-role"
@@ -92,8 +63,8 @@ resource "aws_iam_role_policy" "reverse_proxy" {
           "s3:DeleteObject",
         ]
         Resource = [
-          aws_s3_bucket.cert.arn,
-          "${aws_s3_bucket.cert.arn}/*",
+          "arn:aws:s3:::${var.cert_bucket}",
+          "arn:aws:s3:::${var.cert_bucket}/*",
         ]
       }
     ]
@@ -145,7 +116,7 @@ resource "aws_instance" "reverse_proxy" {
     #!/bin/bash
     set -e
 
-    CERT_BUCKET="${aws_s3_bucket.cert.bucket}"
+    CERT_BUCKET="${var.cert_bucket}"
     DOMAIN="${var.domain_name}"
     CERT_DIR="/etc/letsencrypt"
 
