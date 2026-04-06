@@ -150,6 +150,7 @@ module "reverse_proxy" {
   security_group_id = aws_security_group.reverse_proxy.id
   domain_name       = var.domain_name
   upstream_url      = module.cloudmap.service_dns # resolve ECS task IPs via Cloud Map
+  certbot_email     = var.certbot_email
 }
 
 module "bastion" {

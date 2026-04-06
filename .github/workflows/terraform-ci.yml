@@ -95,6 +95,7 @@ jobs:
           TF_VAR_github_repo: ${{ vars.TF_VAR_GITHUB_REPO }}
           TF_VAR_certificate_arn: ${{ vars.TF_VAR_CERTIFICATE_ARN }}
           TF_VAR_alarm_email: ${{ vars.TF_VAR_ALARM_EMAIL }}
+          TF_VAR_certbot_email: ${{ vars.TF_VAR_CERTBOT_EMAIL }}
 
   tfsec-checks:
     name: Tfsec Checks
