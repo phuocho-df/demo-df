@@ -166,6 +166,18 @@ resource "aws_route53_record" "apex" {
   }
 }
 
+# Route53 health check — monitors /api/health endpoint over HTTPS
+resource "aws_route53_health_check" "api" {
+  fqdn              = var.domain_name
+  port              = 443
+  type              = "HTTPS"
+  resource_path     = "/api/health"
+  failure_threshold = 3
+  request_interval  = 30
+
+  tags = { Name = "${var.app_name}-api-health-check" }
+}
+
 # GitHub Actions secrets — set automatically on every terraform apply
 locals {
   repo_name = split("/", var.github_repo)[1]
