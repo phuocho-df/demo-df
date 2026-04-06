@@ -8,9 +8,6 @@
 name: Terraform CI
 
 on:
-  push:
-    paths:
-      - 'terraform/**'
   pull_request:
     paths:
       - 'terraform/**'
