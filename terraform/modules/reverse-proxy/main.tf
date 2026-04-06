@@ -28,6 +28,12 @@ resource "aws_iam_role" "reverse_proxy" {
   })
 }
 
+# SSM managed instance — enables Session Manager access without SSH key
+resource "aws_iam_role_policy_attachment" "ssm" {
+  role       = aws_iam_role.reverse_proxy.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 # tfsec:ignore:aws-iam-no-policy-wildcards — Route53 GetChange/ListHostedZones require wildcard resource
 resource "aws_iam_role_policy" "certbot_route53" {
   name = "${var.app_name}-certbot-route53"
