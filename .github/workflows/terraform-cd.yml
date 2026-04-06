@@ -1,6 +1,6 @@
 # -----------------------------------------------------------------------------
 # File:    terraform-cd.yml
-# Purpose: Terraform CD — init, plan, apply on push to master
+# Purpose: Terraform CD — init, plan, apply on push/PR to master
 # Branch:  master
 # -----------------------------------------------------------------------------
 
@@ -8,6 +8,11 @@ name: Terraform Deploy
 
 on:
   push:
+    branches:
+      - master
+    paths:
+      - 'terraform/**'
+  pull_request:
     branches:
       - master
     paths:
