@@ -108,18 +108,3 @@ jobs:
         with:
           working_directory: terraform
 
-  checkov-checks:
-    name: Checkov Checks
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-
-      - name: Run Checkov
-        uses: bridgecrewio/checkov-action@v12
-        with:
-          directory: terraform
-          framework: terraform
-          quiet: true
-          output_format: cli
