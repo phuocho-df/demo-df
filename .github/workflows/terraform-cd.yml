@@ -12,11 +12,6 @@ on:
       - master
     paths:
       - 'terraform/**'
-  pull_request:
-    branches:
-      - master
-    paths:
-      - 'terraform/**'
   workflow_dispatch:
 
 jobs:
