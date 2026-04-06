@@ -120,11 +120,10 @@ resource "aws_ecs_service" "app" {
   tags = { Name = "${var.app_name}-service" }
 }
 
-# tfsec:ignore:aws-sns-topic-encryption-use-cmk — AWS-managed key sufficient for alarm notifications
+# tfsec:ignore:aws-sns-topic-encryption-use-cmk — no KMS encryption: CloudWatch cannot publish to KMS-encrypted SNS with AWS-managed keys
 resource "aws_sns_topic" "alarms" {
-  name              = "${var.app_name}-alarms"
-  kms_master_key_id = "alias/aws/sns"
-  tags              = { Name = "${var.app_name}-alarms" }
+  name = "${var.app_name}-alarms"
+  tags = { Name = "${var.app_name}-alarms" }
 }
 
 resource "aws_sns_topic_subscription" "email" {
