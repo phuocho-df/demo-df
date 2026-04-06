@@ -120,7 +120,8 @@ resource "aws_ecs_service" "app" {
   tags = { Name = "${var.app_name}-service" }
 }
 
-# tfsec:ignore:aws-sns-topic-encryption-use-cmk — no KMS encryption: CloudWatch cannot publish to KMS-encrypted SNS with AWS-managed keys
+# tfsec:ignore:aws-sns-topic-encryption-use-cmk — no KMS: CloudWatch cannot publish to KMS-encrypted SNS with AWS-managed keys
+# tfsec:ignore:aws-sns-enable-topic-encryption — intentionally unencrypted: alarm notifications are non-sensitive
 resource "aws_sns_topic" "alarms" {
   name = "${var.app_name}-alarms"
   tags = { Name = "${var.app_name}-alarms" }
