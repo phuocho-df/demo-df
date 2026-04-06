@@ -103,6 +103,7 @@ resource "aws_iam_role_policy" "github_deploy" {
   policy = data.aws_iam_policy_document.github_deploy.json
 }
 
+# tfsec:ignore:aws-ec2-add-description-to-security-group-rule — descriptions already present on each ingress/egress block
 # Security group for reverse proxy — allows HTTP/HTTPS from internet, outbound to ALB
 resource "aws_security_group" "reverse_proxy" {
   name        = "${var.app_name}-reverse-proxy-sg"
