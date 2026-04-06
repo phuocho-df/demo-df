@@ -1,5 +1,6 @@
 # GitHub Actions OIDC provider — allows GitHub Actions to assume AWS roles
 # without long-lived IAM credentials stored in GitHub Secrets
+# Updated trust policy: master, main, dev branches + pull_request events
 resource "aws_iam_openid_connect_provider" "github" {
   url            = "https://token.actions.githubusercontent.com"
   client_id_list = ["sts.amazonaws.com"]
