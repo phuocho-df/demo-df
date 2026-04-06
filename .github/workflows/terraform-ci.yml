@@ -8,6 +8,11 @@
 name: Terraform CI
 
 on:
+  push:
+    branches:
+      - dev
+    paths:
+      - 'terraform/**'
   pull_request:
     paths:
       - 'terraform/**'
