@@ -212,7 +212,7 @@ resource "aws_route53_record" "apex_alb" {
   set_identifier = "alb"
 
   weighted_routing_policy {
-    weight = 100
+    weight = 50
   }
 
   alias {
@@ -231,7 +231,7 @@ resource "aws_route53_record" "apex_proxy" {
   set_identifier = "reverse-proxy"
 
   weighted_routing_policy {
-    weight = 0
+    weight = 50
   }
 
   records = [module.reverse_proxy.public_ip]
