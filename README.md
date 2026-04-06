@@ -2,6 +2,7 @@
 
 Django REST API template with production-ready AWS infrastructure (ECS Fargate + RDS + ALB).
 
+
 **Live:** https://dfdemo.space/api/v1/docs
 
 ---
