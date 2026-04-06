@@ -143,6 +143,17 @@ resource "aws_security_group" "reverse_proxy" {
   tags = { Name = "${var.app_name}-reverse-proxy-sg" }
 }
 
+# Allow reverse proxy EC2 to reach ECS tasks directly (Cloud Map path)
+resource "aws_security_group_rule" "ecs_from_reverse_proxy" {
+  type                     = "ingress"
+  description              = "HTTP from reverse proxy (Cloud Map direct routing)"
+  from_port                = 80
+  to_port                  = 80
+  protocol                 = "tcp"
+  security_group_id        = module.networking.sg_ecs_id
+  source_security_group_id = aws_security_group.reverse_proxy.id
+}
+
 module "reverse_proxy" {
   source            = "./modules/reverse-proxy"
   app_name          = var.app_name
