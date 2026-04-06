@@ -30,6 +30,9 @@ module "rds" {
   db_password       = var.db_password
   subnet_ids        = module.networking.private_subnet_ids
   security_group_id = module.networking.sg_rds_id
+
+  # Ensure OIDC role is destroyed LAST — deleting it mid-destroy invalidates credentials
+  depends_on = [module.github_oidc]
 }
 
 module "github_oidc" {
@@ -163,6 +166,9 @@ module "reverse_proxy" {
   upstream_url      = module.cloudmap.service_dns # resolve ECS task IPs via Cloud Map
   certbot_email     = var.certbot_email
   cert_bucket       = "${var.app_name}-letsencrypt-cert"
+
+  # Ensure OIDC role is destroyed LAST — deleting it mid-destroy invalidates credentials
+  depends_on = [module.github_oidc]
 }
 
 module "bastion" {
@@ -180,6 +186,9 @@ module "alb" {
   subnet_ids        = module.networking.public_subnet_ids
   security_group_id = module.networking.sg_alb_id
   certificate_arn   = var.certificate_arn
+
+  # Ensure OIDC role is destroyed LAST — deleting it mid-destroy invalidates credentials
+  depends_on = [module.github_oidc]
 }
 
 
@@ -215,6 +224,9 @@ module "ecs" {
   alarm_email = var.alarm_email
 
   cloudmap_service_arn = module.cloudmap.service_arn
+
+  # Ensure OIDC role is destroyed LAST — deleting it mid-destroy invalidates credentials
+  depends_on = [module.github_oidc]
 }
 
 # Route53 weighted record — ALB (weight=100, primary traffic)
