@@ -64,6 +64,7 @@ jobs:
         with:
           aws-region: us-east-1
           role-to-assume: ${{ secrets.TERRAFORM_ROLE_ARN }}
+          role-duration-seconds: 7200
 
       - name: Terraform Init
         working-directory: ./terraform

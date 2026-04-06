@@ -59,8 +59,9 @@ resource "aws_iam_role" "github_deploy" {
 # Terraform role — assumed by GitHub Actions terraform-ci/cd/destroy workflows
 # Needs broad permissions to create/modify/destroy all managed AWS resources
 resource "aws_iam_role" "github_terraform" {
-  name               = "${var.app_name}-github-terraform"
-  assume_role_policy = data.aws_iam_policy_document.github_trust.json
+  name                 = "${var.app_name}-github-terraform"
+  assume_role_policy   = data.aws_iam_policy_document.github_trust.json
+  max_session_duration = 7200 # 2 hours — needed for long terraform destroy operations
 
   tags = { Name = "${var.app_name}-github-terraform" }
 }
