@@ -107,6 +107,14 @@ resource "aws_ecs_service" "app" {
     container_port   = 80
   }
 
+  # Cloud Map registration — each task IP is registered for reverse proxy DNS discovery
+  dynamic "service_registries" {
+    for_each = var.cloudmap_service_arn != null ? [1] : []
+    content {
+      registry_arn = var.cloudmap_service_arn
+    }
+  }
+
   deployment_circuit_breaker {
     enable   = true
     rollback = true

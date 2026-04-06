@@ -107,3 +107,9 @@ variable "ssm_db_password_arn" {
   description = "SSM parameter ARN for DB_PASSWORD"
   type        = string
 }
+
+variable "cloudmap_service_arn" {
+  description = "Cloud Map service ARN for ECS task registration (optional — null disables Cloud Map)"
+  type        = string
+  default     = null
+}
