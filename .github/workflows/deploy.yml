@@ -43,13 +43,11 @@ jobs:
         id: build-image
         env:
           IMAGE_SHA: ${{ secrets.ECR_REPOSITORY_URL }}:${{ github.sha }}
-          IMAGE_LATEST: ${{ secrets.ECR_REPOSITORY_URL }}:latest
         run: |
           docker buildx build \
             --cache-from type=gha \
             --cache-to type=gha,mode=max \
             --tag $IMAGE_SHA \
-            --tag $IMAGE_LATEST \
             --push \
             .
           echo "image=$IMAGE_SHA" >> $GITHUB_OUTPUT
