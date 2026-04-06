@@ -22,3 +22,8 @@ variable "upstream_url" {
   description = "ALB DNS name or upstream URL to proxy traffic to"
   type        = string
 }
+
+variable "certbot_email" {
+  description = "Email address for Let's Encrypt certificate notifications and recovery"
+  type        = string
+}
