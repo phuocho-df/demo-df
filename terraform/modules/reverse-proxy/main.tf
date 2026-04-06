@@ -102,8 +102,7 @@ resource "aws_instance" "reverse_proxy" {
       --non-interactive \
       --agree-tos \
       --email ${var.certbot_email} \
-      -d ${var.domain_name} \
-      --dns-route53-propagation-seconds 60
+      -d ${var.domain_name}
 
     # Configure Nginx: HTTP → HTTPS redirect + HTTPS reverse proxy to upstream
     cat > /etc/nginx/conf.d/reverse-proxy.conf <<NGINX
