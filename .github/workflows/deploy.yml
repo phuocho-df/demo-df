@@ -6,6 +6,7 @@ on:
       - master
     paths-ignore:
       - 'terraform/**'
+      - '.github/**'
   workflow_dispatch:
 
 # Required for OIDC token exchange with AWS
