@@ -4,9 +4,13 @@ on:
   push:
     branches:
       - master
+    paths-ignore:
+      - 'terraform/**'
   pull_request:
     branches:
       - master
+    paths-ignore:
+      - 'terraform/**'
   workflow_dispatch:
 
 # Required for OIDC token exchange with AWS

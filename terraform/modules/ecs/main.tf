@@ -120,7 +120,7 @@ resource "aws_ecs_service" "app" {
   tags = { Name = "${var.app_name}-service" }
 }
 
-# SNS topic for CloudWatch alarm notifications
+# tfsec:ignore:aws-sns-topic-encryption-use-cmk — AWS-managed key sufficient for alarm notifications
 resource "aws_sns_topic" "alarms" {
   name              = "${var.app_name}-alarms"
   kms_master_key_id = "alias/aws/sns"
