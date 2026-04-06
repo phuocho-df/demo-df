@@ -14,7 +14,36 @@ data "aws_ami" "amazon_linux_2023" {
   }
 }
 
-# IAM role for EC2 — grants certbot permission to create Route53 TXT records (DNS-01 challenge)
+# S3 bucket to persist Let's Encrypt cert across instance recreations
+# tfsec:ignore:aws-s3-enable-bucket-logging — access logging not needed for cert backup
+# tfsec:ignore:aws-s3-enable-versioning — single cert object, versioning not needed
+resource "aws_s3_bucket" "cert" {
+  bucket        = "${var.app_name}-letsencrypt-cert"
+  force_destroy = true
+
+  tags = { Name = "${var.app_name}-letsencrypt-cert" }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "cert" {
+  bucket = aws_s3_bucket.cert.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+# tfsec:ignore:aws-s3-no-public-access-block — bucket is private, no ACL needed
+resource "aws_s3_bucket_public_access_block" "cert" {
+  bucket                  = aws_s3_bucket.cert.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# IAM role for EC2 — grants certbot Route53 permission + S3 cert backup/restore
 resource "aws_iam_role" "reverse_proxy" {
   name = "${var.app_name}-reverse-proxy-role"
 
@@ -35,14 +64,15 @@ resource "aws_iam_role_policy_attachment" "ssm" {
 }
 
 # tfsec:ignore:aws-iam-no-policy-wildcards — Route53 GetChange/ListHostedZones require wildcard resource
-resource "aws_iam_role_policy" "certbot_route53" {
-  name = "${var.app_name}-certbot-route53"
+resource "aws_iam_role_policy" "reverse_proxy" {
+  name = "${var.app_name}-reverse-proxy-policy"
   role = aws_iam_role.reverse_proxy.id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "CertbotRoute53"
         Effect = "Allow"
         Action = [
           "route53:GetChange",
@@ -51,6 +81,20 @@ resource "aws_iam_role_policy" "certbot_route53" {
           "route53:ListResourceRecordSets",
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "CertS3Backup"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:ListBucket",
+          "s3:DeleteObject",
+        ]
+        Resource = [
+          aws_s3_bucket.cert.arn,
+          "${aws_s3_bucket.cert.arn}/*",
+        ]
       }
     ]
   })
@@ -92,40 +136,70 @@ resource "aws_instance" "reverse_proxy" {
     encrypted = true
   }
 
-  # Install Nginx + certbot, obtain Let's Encrypt cert via Route53 DNS-01 challenge,
-  # then configure Nginx to terminate SSL and proxy to upstream (Cloud Map or ALB DNS).
+  # Boot sequence:
+  # 1. Try to restore cert from S3 (avoids Let's Encrypt rate limit on instance recreate)
+  # 2. Run certbot only if cert missing or expires within 30 days
+  # 3. After certbot, back up cert to S3
+  # 4. Configure Nginx and start
   user_data = <<-EOF
     #!/bin/bash
     set -e
+
+    CERT_BUCKET="${aws_s3_bucket.cert.bucket}"
+    DOMAIN="${var.domain_name}"
+    CERT_DIR="/etc/letsencrypt"
 
     # Install nginx and certbot with Route53 DNS plugin
     dnf install -y nginx python3-pip
     pip3 install certbot certbot-dns-route53
 
-    # Obtain SSL certificate via DNS-01 challenge (no HTTP dependency — works with weighted DNS)
-    certbot certonly \
-      --dns-route53 \
-      --non-interactive \
-      --agree-tos \
-      --email ${var.certbot_email} \
-      -d ${var.domain_name}
+    # Step 1: Restore cert from S3 if available
+    echo "Restoring cert from S3..."
+    aws s3 sync s3://$CERT_BUCKET/letsencrypt $CERT_DIR --quiet || true
+
+    # Step 2: Check if cert is valid for >30 days; if not, run certbot
+    CERT_PATH="$CERT_DIR/live/$DOMAIN/fullchain.pem"
+    NEED_CERT=true
+
+    if [ -f "$CERT_PATH" ]; then
+      # openssl returns exit 0 if cert expires after the given date
+      if openssl x509 -checkend $((30 * 86400)) -noout -in "$CERT_PATH" 2>/dev/null; then
+        echo "Cert valid for >30 days, skipping certbot."
+        NEED_CERT=false
+      else
+        echo "Cert missing or expires within 30 days, requesting new cert."
+      fi
+    fi
+
+    if [ "$NEED_CERT" = "true" ]; then
+      certbot certonly \
+        --dns-route53 \
+        --non-interactive \
+        --agree-tos \
+        --email ${var.certbot_email} \
+        -d $DOMAIN
+
+      # Step 3: Back up new cert to S3
+      echo "Backing up cert to S3..."
+      aws s3 sync $CERT_DIR s3://$CERT_BUCKET/letsencrypt --quiet
+    fi
 
     # Configure Nginx: HTTP → HTTPS redirect + HTTPS reverse proxy to upstream
     cat > /etc/nginx/conf.d/reverse-proxy.conf <<NGINX
     # Redirect all HTTP to HTTPS
     server {
       listen 80;
-      server_name ${var.domain_name};
+      server_name $DOMAIN;
       return 301 https://\$host\$request_uri;
     }
 
     # HTTPS reverse proxy — terminates SSL, forwards to upstream over HTTP
     server {
       listen 443 ssl;
-      server_name ${var.domain_name};
+      server_name $DOMAIN;
 
-      ssl_certificate     /etc/letsencrypt/live/${var.domain_name}/fullchain.pem;
-      ssl_certificate_key /etc/letsencrypt/live/${var.domain_name}/privkey.pem;
+      ssl_certificate     $CERT_DIR/live/$DOMAIN/fullchain.pem;
+      ssl_certificate_key $CERT_DIR/live/$DOMAIN/privkey.pem;
 
       # AWS VPC DNS resolver — required for dynamic DNS resolution (Cloud Map, ALB)
       resolver 169.254.169.253 valid=10s;
@@ -141,8 +215,10 @@ resource "aws_instance" "reverse_proxy" {
     }
     NGINX
 
-    # Auto-renew cert twice daily
-    echo "0 0,12 * * * root certbot renew --quiet --deploy-hook 'nginx -s reload'" >> /etc/crontab
+    # Auto-renew cert twice daily and sync back to S3 after renewal
+    cat >> /etc/crontab <<CRON
+    0 0,12 * * * root certbot renew --quiet --deploy-hook "nginx -s reload && aws s3 sync $CERT_DIR s3://$CERT_BUCKET/letsencrypt --quiet"
+    CRON
 
     systemctl enable nginx
     systemctl start nginx
