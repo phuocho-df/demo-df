@@ -165,6 +165,7 @@ module "reverse_proxy" {
   domain_name       = var.domain_name
   upstream_url      = module.cloudmap.service_dns # resolve ECS task IPs via Cloud Map
   certbot_email     = var.certbot_email
+  certbot_staging   = var.certbot_staging
   cert_bucket       = "${var.app_name}-letsencrypt-cert"
 
   # Ensure OIDC role is destroyed LAST — deleting it mid-destroy invalidates credentials
@@ -285,34 +286,34 @@ resource "github_actions_secret" "aws_role_arn" {
   plaintext_value = module.github_oidc.role_arn
 }
 
-resource "github_actions_secret" "ecr_repository_url" {
-  repository      = local.repo_name
-  secret_name     = "ECR_REPOSITORY_URL"
-  plaintext_value = module.ecr.repository_url
+resource "github_actions_variable" "ecr_repository_url" {
+  repository    = local.repo_name
+  variable_name = "ECR_REPOSITORY_URL"
+  value         = module.ecr.repository_url
 }
 
-resource "github_actions_secret" "ecs_cluster_name" {
-  repository      = local.repo_name
-  secret_name     = "ECS_CLUSTER_NAME"
-  plaintext_value = module.ecs.cluster_name
+resource "github_actions_variable" "ecs_cluster_name" {
+  repository    = local.repo_name
+  variable_name = "ECS_CLUSTER_NAME"
+  value         = module.ecs.cluster_name
 }
 
-resource "github_actions_secret" "ecs_service_name" {
-  repository      = local.repo_name
-  secret_name     = "ECS_SERVICE_NAME"
-  plaintext_value = module.ecs.service_name
+resource "github_actions_variable" "ecs_service_name" {
+  repository    = local.repo_name
+  variable_name = "ECS_SERVICE_NAME"
+  value         = module.ecs.service_name
 }
 
-resource "github_actions_secret" "ecs_task_family" {
-  repository      = local.repo_name
-  secret_name     = "ECS_TASK_FAMILY"
-  plaintext_value = var.app_name
+resource "github_actions_variable" "ecs_task_family" {
+  repository    = local.repo_name
+  variable_name = "ECS_TASK_FAMILY"
+  value         = var.app_name
 }
 
-resource "github_actions_secret" "ecs_container_name" {
-  repository      = local.repo_name
-  secret_name     = "ECS_CONTAINER_NAME"
-  plaintext_value = var.app_name
+resource "github_actions_variable" "ecs_container_name" {
+  repository    = local.repo_name
+  variable_name = "ECS_CONTAINER_NAME"
+  value         = var.app_name
 }
 
 resource "github_actions_secret" "terraform_role_arn" {

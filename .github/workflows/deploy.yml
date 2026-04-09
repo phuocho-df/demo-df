@@ -38,7 +38,7 @@ jobs:
       - name: Build, tag, and push image to ECR
         id: build-image
         env:
-          IMAGE_SHA: ${{ secrets.ECR_REPOSITORY_URL }}:${{ github.sha }}
+          IMAGE_SHA: ${{ vars.ECR_REPOSITORY_URL }}:${{ github.sha }}
         run: |
           docker buildx build \
             --cache-from type=gha \
@@ -51,7 +51,7 @@ jobs:
       - name: Download current ECS task definition
         run: |
           aws ecs describe-task-definition \
-            --task-definition ${{ secrets.ECS_TASK_FAMILY }} \
+            --task-definition ${{ vars.ECS_TASK_FAMILY }} \
             --query taskDefinition > task-def.json
 
       - name: Render new task definition with updated image
@@ -59,18 +59,18 @@ jobs:
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: task-def.json
-          container-name: ${{ secrets.ECS_CONTAINER_NAME }}
+          container-name: ${{ vars.ECS_CONTAINER_NAME }}
           image: ${{ steps.build-image.outputs.image }}
 
       - name: Deploy new task definition to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service: ${{ secrets.ECS_SERVICE_NAME }}
-          cluster: ${{ secrets.ECS_CLUSTER_NAME }}
+          service: ${{ vars.ECS_SERVICE_NAME }}
+          cluster: ${{ vars.ECS_CLUSTER_NAME }}
           wait-for-service-stability: true
 
       - name: Smoke test
         run: |
-          curl --fail --retry 3 --retry-delay 5 \
+          curl --fail --insecure --retry 3 --retry-delay 5 \
             https://${{ vars.TF_VAR_DOMAIN_NAME }}/api/health

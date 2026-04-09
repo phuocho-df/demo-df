@@ -124,9 +124,11 @@ resource "aws_instance" "reverse_proxy" {
     dnf install -y nginx python3-pip
     pip3 install certbot certbot-dns-route53
 
-    # Step 1: Restore cert from S3 if available
+    %{if !var.certbot_staging}
+    # Step 1: Restore production cert from S3 if available (skip in staging — certs are ephemeral)
     echo "Restoring cert from S3..."
     aws s3 sync s3://$CERT_BUCKET/letsencrypt $CERT_DIR --quiet || true
+    %{endif}
 
     # Step 2: Check if cert is valid for >30 days; if not, run certbot
     CERT_PATH="$CERT_DIR/live/$DOMAIN/fullchain.pem"
@@ -143,16 +145,22 @@ resource "aws_instance" "reverse_proxy" {
     fi
 
     if [ "$NEED_CERT" = "true" ]; then
+      # Set staging flag — empty string when false, bash word-splitting drops it cleanly
+      STAGING_FLAG="%{if var.certbot_staging}--staging%{endif}"
+
       certbot certonly \
         --dns-route53 \
         --non-interactive \
         --agree-tos \
         --email ${var.certbot_email} \
+        $STAGING_FLAG \
         -d $DOMAIN
 
-      # Step 3: Back up new cert to S3
+      %{if !var.certbot_staging}
+      # Step 3: Back up production cert to S3 (skip in staging — not worth storing)
       echo "Backing up cert to S3..."
       aws s3 sync $CERT_DIR s3://$CERT_BUCKET/letsencrypt --quiet
+      %{endif}
     fi
 
     # Configure Nginx: HTTP → HTTPS redirect + HTTPS reverse proxy to upstream
@@ -186,9 +194,13 @@ resource "aws_instance" "reverse_proxy" {
     }
     NGINX
 
-    # Auto-renew cert twice daily and sync back to S3 after renewal
+    # Auto-renew cert twice daily; sync back to S3 only in production
     cat >> /etc/crontab <<CRON
+    %{if var.certbot_staging}
+    0 0,12 * * * root certbot renew --quiet --deploy-hook "nginx -s reload"
+    %{else}
     0 0,12 * * * root certbot renew --quiet --deploy-hook "nginx -s reload && aws s3 sync $CERT_DIR s3://$CERT_BUCKET/letsencrypt --quiet"
+    %{endif}
     CRON
 
     systemctl enable nginx

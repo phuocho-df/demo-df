@@ -32,3 +32,9 @@ variable "cert_bucket" {
   description = "S3 bucket name for Let's Encrypt cert backup/restore (managed outside Terraform)"
   type        = string
 }
+
+variable "certbot_staging" {
+  description = "Use Let's Encrypt staging environment — avoids rate limits during testing, certs not trusted by browsers"
+  type        = bool
+  default     = false
+}
