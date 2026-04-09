@@ -1,7 +1,6 @@
 # demo-df
 
-Django REST API template with production-ready AWS infrastructure (ECS Fargate + RDS + ALB).
-
+Django REST API template with production-ready AWS infrastructure (ECS Fargate + RDS + ALB + Reverse Proxy).
 
 **Live:** https://dfdemo.space/api/v1/docs
 
@@ -14,9 +13,17 @@ Django REST API template with production-ready AWS infrastructure (ECS Fargate +
 | Backend | Django, Django REST Framework |
 | Database | PostgreSQL (RDS) |
 | Container | Docker, AWS ECS Fargate (Spot) |
-| Infrastructure | Terraform, AWS (ECS, RDS, ALB, ECR, SSM) |
+| Infrastructure | Terraform, AWS (ECS, RDS, ALB, ECR, Route53, ACM) |
+| Reverse Proxy | Nginx + Let's Encrypt (EC2) |
 | CI/CD | GitHub Actions |
 | Auth | JWT (djangorestframework-simplejwt) |
+| Monitoring | CloudWatch + SNS + Gmail alerts |
+
+---
+
+## Architecture
+
+![Architecture Diagram](https://drive.google.com/uc?export=view&id=1KzCgMFIZzSZZ6f-2uP-XFA2bUeSOiCyC)
 
 ---
 
@@ -86,13 +93,15 @@ docker run -p 8000:80 django-template
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
 | `ci.yml` | push/PR to master, dev | Lint + tests |
-| `deploy.yml` | push to master | Build image → push ECR → deploy ECS |
-| `terraform-ci.yml` | PR to master (terraform/**) | fmt + validate + plan + tfsec |
-| `terraform-cd.yml` | push to master (terraform/**) | Terraform apply |
+| `deploy.yml` | push to master (non-terraform) / after terraform-cd | Build image → push ECR → deploy ECS |
+| `terraform-ci.yml` | PR to master (`terraform/**`) | fmt + validate + plan + tfsec |
+| `terraform-cd.yml` | push to master (`terraform/**`) | Terraform apply |
 | `terraform-bootstrap.yml` | manual only | One-time infra prerequisites setup |
 | `terraform-destroy.yml` | manual only | Teardown all infra |
 
 All workflows support manual trigger via **Actions → Run workflow**.
+
+> **Deploy order:** When both terraform and code change, `terraform-cd` runs first. `deploy` triggers automatically after via `workflow_run`.
 
 ### Bootstrap (first-time setup)
 
@@ -109,6 +118,7 @@ See `terraform/bootstrap/` — creates S3 state bucket, DynamoDB lock table, and
 - `TF_VAR_DOMAIN_NAME`, `TF_VAR_CORS_ALLOWED_ORIGINS`, `TF_VAR_CERTIFICATE_ARN`
 - `TF_VAR_GITHUB_REPO`, `TF_VAR_ALARM_EMAIL`
 - `TF_STATE_BUCKET`, `TF_STATE_LOCK_TABLE`, `AWS_ACCOUNT_ID` *(set automatically by bootstrap)*
+- `ECR_REPOSITORY_URL`, `ECS_CLUSTER_NAME`, `ECS_SERVICE_NAME`, `ECS_TASK_FAMILY`, `ECS_CONTAINER_NAME`
 
 ---
 
