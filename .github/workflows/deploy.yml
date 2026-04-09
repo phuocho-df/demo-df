@@ -7,12 +7,21 @@ on:
     paths-ignore:
       - 'terraform/**'
       - '.github/**'
+  # Run after Terraform Deploy when terraform files change alongside code
+  workflow_run:
+    workflows: ["Terraform Deploy"]
+    types: [completed]
+    branches: [master]
   workflow_dispatch:
 
 # Required for OIDC token exchange with AWS
 permissions:
   id-token: write
   contents: read
+
+concurrency:
+  group: cd-master
+  cancel-in-progress: false
 
 jobs:
   deploy:
