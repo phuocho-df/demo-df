@@ -1,9 +1,14 @@
 # demo-df
 
-Django REST API template with production-ready AWS infrastructure (ECS Fargate + RDS + ALB).
-
+Django REST API template with production-ready AWS infrastructure (ECS Fargate + RDS + ALB + Reverse Proxy).
 
 **Live:** https://dfdemo.space/api/v1/docs
+
+---
+
+## Architecture
+
+![Architecture Diagram](https://drive.google.com/uc?export=view&id=1KzCgMFIZzSZZ6f-2uP-XFA2bUeSOiCyC)
 
 ---
 
@@ -14,9 +19,11 @@ Django REST API template with production-ready AWS infrastructure (ECS Fargate +
 | Backend | Django, Django REST Framework |
 | Database | PostgreSQL (RDS) |
 | Container | Docker, AWS ECS Fargate (Spot) |
-| Infrastructure | Terraform, AWS (ECS, RDS, ALB, ECR, SSM) |
+| Infrastructure | Terraform, AWS (ECS, RDS, ALB, ECR, Route53, ACM) |
+| Reverse Proxy | Nginx + Let's Encrypt (EC2) |
 | CI/CD | GitHub Actions |
 | Auth | JWT (djangorestframework-simplejwt) |
+| Monitoring | CloudWatch + SNS + Gmail alerts |
 
 ---
 
