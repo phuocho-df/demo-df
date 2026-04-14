@@ -19,6 +19,13 @@ on:
       - 'terraform/**'
   workflow_dispatch:
 
+# Push to dev and the resulting PR trigger fire simultaneously for the same commit,
+# causing two concurrent terraform plans that race for the DynamoDB state lock.
+# Grouping by SHA ensures only one runs — the second cancels the first.
+concurrency:
+  group: terraform-ci-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
 jobs:
   terraform-ci:
     name: Terraform CI
