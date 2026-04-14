@@ -34,6 +34,31 @@ jobs:
     outputs:
       proceed: ${{ steps.decide.outputs.proceed }}
     steps:
+      # Needed only for push events to inspect which files changed
+      - name: Checkout
+        if: github.event_name == 'push'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      # If push contains terraform changes, skip — terraform-cd will trigger deploy
+      # via workflow_run after apply completes, ensuring correct order.
+      - name: Detect terraform changes on push
+        id: tf-check
+        if: github.event_name == 'push'
+        run: |
+          BEFORE="${{ github.event.before }}"
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            CHANGED=$(git ls-tree --name-only -r HEAD)
+          else
+            CHANGED=$(git diff --name-only "$BEFORE" "${{ github.sha }}")
+          fi
+          if echo "$CHANGED" | grep -q '^terraform/'; then
+            echo "terraform_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "terraform_changed=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Download deploy signal artifact
         id: download
         if: github.event_name == 'workflow_run'
@@ -48,7 +73,10 @@ jobs:
         id: decide
         run: |
           EVENT="${{ github.event_name }}"
-          if [ "$EVENT" != "workflow_run" ]; then
+          if [ "$EVENT" = "push" ] && [ "${{ steps.tf-check.outputs.terraform_changed }}" = "true" ]; then
+            echo "proceed=false" >> $GITHUB_OUTPUT
+            echo "Terraform also changed — deferring to workflow_run for correct sequencing"
+          elif [ "$EVENT" = "push" ] || [ "$EVENT" = "workflow_dispatch" ]; then
             echo "proceed=true" >> $GITHUB_OUTPUT
             echo "Triggered by $EVENT — proceeding"
           elif [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
