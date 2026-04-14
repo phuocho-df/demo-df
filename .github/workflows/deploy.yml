@@ -14,19 +14,59 @@ on:
     branches: [master]
   workflow_dispatch:
 
-# Required for OIDC token exchange with AWS
+# Required for OIDC token exchange with AWS and artifact download from terraform-cd
 permissions:
   id-token: write
   contents: read
+  actions: read
 
 concurrency:
   group: cd-master
   cancel-in-progress: false
 
 jobs:
+  # Determines whether the deploy job should proceed.
+  # When triggered via workflow_run (after terraform-cd), only proceed if terraform-cd
+  # uploaded a deploy-signal artifact — meaning non-terraform files also changed.
+  check:
+    name: Check deploy signal
+    runs-on: ubuntu-latest
+    outputs:
+      proceed: ${{ steps.decide.outputs.proceed }}
+    steps:
+      - name: Download deploy signal artifact
+        id: download
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v4
+        with:
+          name: deploy-signal
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+        continue-on-error: true
+
+      - name: Decide whether to deploy
+        id: decide
+        run: |
+          EVENT="${{ github.event_name }}"
+          if [ "$EVENT" != "workflow_run" ]; then
+            echo "proceed=true" >> $GITHUB_OUTPUT
+            echo "Triggered by $EVENT — proceeding"
+          elif [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
+            echo "proceed=false" >> $GITHUB_OUTPUT
+            echo "Terraform Deploy did not succeed (conclusion: ${{ github.event.workflow_run.conclusion }}) — skipping"
+          elif [ "${{ steps.download.outcome }}" = "success" ]; then
+            echo "proceed=true" >> $GITHUB_OUTPUT
+            echo "Deploy signal found — code changed alongside terraform — proceeding"
+          else
+            echo "proceed=false" >> $GITHUB_OUTPUT
+            echo "No deploy signal — only terraform changed — skipping"
+          fi
+
   deploy:
     name: Build and deploy to ECS
     runs-on: ubuntu-latest
+    needs: check
+    if: needs.check.outputs.proceed == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4

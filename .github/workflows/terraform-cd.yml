@@ -44,6 +44,39 @@ jobs:
       # and cannot be read before the workspace is populated.
       - name: Checkout
         uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 2
+
+      # Detect whether non-terraform files changed in this push.
+      # Creates $RUNNER_TEMP/deploy-signal.txt if so — uploaded as artifact for deploy.yml to consume.
+      # workflow_dispatch has no before SHA, so no signal is emitted (trigger deploy.yml manually if needed).
+      - name: Detect non-terraform code changes
+        id: code-changes
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "has_code_changes=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          BEFORE="${{ github.event.before }}"
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            CHANGED=$(git ls-tree --name-only -r HEAD)
+          else
+            CHANGED=$(git diff --name-only "$BEFORE" "${{ github.sha }}")
+          fi
+          if echo "$CHANGED" | grep -qvE '^(terraform/|\.github/)'; then
+            echo "has_code_changes=true" >> $GITHUB_OUTPUT
+            echo "deploy=true" > "$RUNNER_TEMP/deploy-signal.txt"
+          else
+            echo "has_code_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload deploy signal artifact
+        if: steps.code-changes.outputs.has_code_changes == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-signal
+          path: ${{ runner.temp }}/deploy-signal.txt
+          retention-days: 1
 
       # Read all other tool versions from files now that the workspace exists
       # Only TF_VERSION is loaded dynamically — GitHub Actions does not support
