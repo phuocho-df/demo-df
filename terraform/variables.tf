@@ -93,7 +93,7 @@ variable "certbot_email" {
 }
 
 variable "certbot_staging" {
-  description = "Use Let's Encrypt staging environment — set true for testing, false for production cert"
+  description = "Use Let's Encrypt staging environment (true = staging/test, false = production cert)"
   type        = bool
   default     = false
 }
